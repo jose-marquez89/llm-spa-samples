@@ -1,0 +1,3854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AnatoNurse 3D — Interactive Human Anatomy & Clinical Assessment Atlas</title>
+  <style>
+    :root {
+      --bg-primary: #070b14;
+      --bg-panel: rgba(13, 20, 36, 0.88);
+      --bg-panel-solid: #0f172a;
+      --bg-card: rgba(23, 34, 59, 0.72);
+      --bg-card-hover: rgba(33, 49, 84, 0.88);
+      --border-subtle: rgba(148, 163, 184, 0.16);
+      --border-accent: rgba(56, 189, 248, 0.45);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-teal: #2dd4bf;
+      --accent-rose: #fb7185;
+      --accent-amber: #fbbf24;
+      --accent-purple: #c084fc;
+      --accent-green: #4ade80;
+      --radius-lg: 14px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+      --shadow-lg: 0 18px 40px -10px rgba(0, 0, 0, 0.65);
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 35%, #13203d 0%, #070b14 75%);
+      font-family: var(--font-sans);
+      color: var(--text-main);
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    /* Top Header Bar */
+    .top-bar {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      height: 54px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 16px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #0ea5e9, #14b8a6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 0 16px rgba(14, 165, 233, 0.45);
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    /* Search & Quick Actions in Header */
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .search-wrapper {
+      position: relative;
+      width: 220px;
+    }
+
+    .search-input {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 7px 12px 7px 30px;
+      color: var(--text-main);
+      font-size: 12.5px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 12px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      max-height: 260px;
+      overflow-y: auto;
+      background: var(--bg-panel-solid);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      display: none;
+      z-index: 100;
+    }
+
+    .search-dropdown.open {
+      display: block;
+    }
+
+    .search-item {
+      padding: 8px 12px;
+      font-size: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .search-item:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .search-item-sys {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+    }
+
+    /* Master Peel Quick Bar (Top Center / Floating) */
+    .peel-banner {
+      position: fixed;
+      top: 76px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 18;
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 7px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow-lg);
+      max-width: calc(100vw - 24px);
+    }
+
+    .peel-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .peel-slider {
+      width: 170px;
+      accent-color: var(--accent-cyan);
+      cursor: pointer;
+    }
+
+    .peel-stage-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-main);
+      background: rgba(56, 189, 248, 0.16);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 3px 10px;
+      border-radius: 999px;
+      min-width: 125px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* Desktop Left Panel (Layers & Systems & Camera) */
+    .left-panel {
+      position: fixed;
+      top: 76px;
+      left: 12px;
+      bottom: 12px;
+      width: 325px;
+      z-index: 15;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Desktop Right Panel (Inspector, Assessment Sites, Quiz) */
+    .right-panel {
+      position: fixed;
+      top: 76px;
+      right: 12px;
+      bottom: 12px;
+      width: 365px;
+      z-index: 15;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(7, 11, 20, 0.45);
+      padding: 4px;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .panel-tab {
+      flex: 1;
+      padding: 8px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.18s;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .panel-tab:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .panel-tab.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.22);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    .panel-header {
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .panel-header h2 {
+      font-size: 13.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent-cyan);
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+    }
+
+    /* Layer Cards */
+    .layer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .layer-card:hover {
+      border-color: rgba(148, 163, 184, 0.35);
+    }
+
+    .layer-card.disabled {
+      opacity: 0.52;
+    }
+
+    .layer-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .layer-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .layer-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .layer-name {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .layer-depth-tag {
+      font-size: 10px;
+      color: var(--text-muted);
+      background: rgba(15, 23, 42, 0.65);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .layer-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .layer-slider {
+      flex: 1;
+      height: 5px;
+      accent-color: var(--accent-cyan);
+      cursor: pointer;
+    }
+
+    .layer-pct {
+      font-size: 11px;
+      color: var(--text-muted);
+      width: 34px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Buttons */
+    .btn {
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 6px 11px;
+      border-radius: 7px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.16s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      background: rgba(51, 65, 85, 0.9);
+      border-color: rgba(148, 163, 184, 0.4);
+    }
+
+    .btn.active, .btn-primary {
+      background: rgba(14, 165, 233, 0.22);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.18);
+      border-color: rgba(244, 63, 94, 0.45);
+      color: var(--accent-rose);
+    }
+
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    /* Section Dividers */
+    .section-subtitle {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin: 14px 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Inspector Content */
+    .inspector-empty {
+      text-align: center;
+      padding: 28px 14px;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .organ-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 9px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+    }
+
+    .organ-title {
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 2px;
+    }
+
+    .organ-latin {
+      font-size: 12.5px;
+      font-style: italic;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .organ-actions {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .info-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 11px 13px;
+      margin-bottom: 10px;
+    }
+
+    .info-block h4 {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent-cyan);
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .info-block p {
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: #dbeafe;
+      user-select: text;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .info-mini {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 9px 11px;
+    }
+
+    .info-mini-label {
+      font-size: 10.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .info-mini-val {
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--text-main);
+      user-select: text;
+    }
+
+    .nursing-pearl-box {
+      background: linear-gradient(135deg, rgba(20, 184, 166, 0.14), rgba(14, 165, 233, 0.1));
+      border: 1px solid rgba(45, 212, 191, 0.4);
+      border-radius: var(--radius-md);
+      padding: 12px 13px;
+      margin-bottom: 10px;
+    }
+
+    .nursing-pearl-box h4 {
+      color: var(--accent-teal);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nursing-pearl-box ul {
+      padding-left: 16px;
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: #e2e8f0;
+    }
+
+    .nursing-pearl-box li {
+      margin-bottom: 4px;
+      user-select: text;
+    }
+
+    /* Assessment List Items */
+    .assessment-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.16s;
+    }
+
+    .assessment-item:hover, .assessment-item.selected {
+      background: var(--bg-card-hover);
+      border-color: var(--accent-cyan);
+    }
+
+    .assessment-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+
+    .assessment-item-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .assessment-cat-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .assessment-item-loc {
+      font-size: 11.5px;
+      color: var(--accent-cyan);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .assessment-item-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* Quiz Mode Styles */
+    .quiz-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .quiz-score-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .quiz-prompt {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.45;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .quiz-option {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      margin-bottom: 7px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .quiz-option:hover:not(:disabled) {
+      border-color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.12);
+    }
+
+    .quiz-option.correct {
+      background: rgba(74, 222, 128, 0.2);
+      border-color: var(--accent-green);
+      color: #bbf7d0;
+    }
+
+    .quiz-option.wrong {
+      background: rgba(251, 113, 133, 0.2);
+      border-color: var(--accent-rose);
+      color: #fecdd3;
+    }
+
+    .quiz-feedback {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .quiz-feedback.show {
+      display: block;
+    }
+
+    /* 3D Floating Tooltip / Label on Hover */
+    #hover-tooltip {
+      position: fixed;
+      pointer-events: none;
+      z-index: 30;
+      background: rgba(7, 11, 20, 0.92);
+      border: 1px solid var(--accent-cyan);
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      transform: translate(-50%, -130%);
+      display: none;
+      white-space: nowrap;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Physiology Vitals Bar (Heart Rate / Respiration Animation) */
+    .vitals-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-top: 8px;
+      gap: 10px;
+    }
+
+    .vital-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+    }
+
+    .heart-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+      animation: pulseBeat 1s infinite;
+    }
+
+    @keyframes pulseBeat {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      35% { transform: scale(1.45); opacity: 1; }
+    }
+
+    /* Bottom Camera Quick Dock (Center Bottom) */
+    .camera-dock {
+      position: fixed;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 18;
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 5px 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: var(--shadow-lg);
+      max-width: calc(100vw - 20px);
+      overflow-x: auto;
+    }
+
+    /* Mobile Bottom Navigation & Drawer Handling */
+    .mobile-nav {
+      display: none;
+    }
+
+    @media (max-width: 960px) {
+      .brand-subtitle {
+        display: none;
+      }
+      .search-wrapper {
+        width: 150px;
+      }
+      .peel-banner {
+        top: 72px;
+        padding: 5px 12px;
+        gap: 8px;
+      }
+      .peel-slider {
+        width: 115px;
+      }
+      .peel-stage-badge {
+        min-width: 95px;
+        font-size: 10px;
+      }
+      .left-panel, .right-panel {
+        top: auto;
+        left: 8px;
+        right: 8px;
+        bottom: 62px;
+        width: auto;
+        height: 46vh;
+        max-height: 430px;
+        z-index: 25;
+      }
+      .left-panel.mobile-hidden, .right-panel.mobile-hidden {
+        transform: translateY(calc(100% + 80px));
+        pointer-events: none;
+      }
+      .camera-dock {
+        bottom: 66px;
+        z-index: 16;
+      }
+      .mobile-nav {
+        position: fixed;
+        bottom: 8px;
+        left: 8px;
+        right: 8px;
+        height: 48px;
+        z-index: 30;
+        background: var(--bg-panel-solid);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        padding: 4px;
+        box-shadow: var(--shadow-lg);
+      }
+      .mobile-nav-btn {
+        flex: 1;
+        height: 100%;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+      }
+      .mobile-nav-btn.active {
+        background: rgba(56, 189, 248, 0.2);
+        color: var(--accent-cyan);
+      }
+    }
+  </style>
+
+  <!-- ES Module Import Map for Three.js -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- 3D Viewport Container -->
+  <div id="canvas-container"></div>
+  <div id="hover-tooltip"></div>
+
+  <!-- Top Header -->
+  <header class="top-bar">
+    <div class="brand">
+      <div class="brand-icon">✚</div>
+      <div>
+        <div class="brand-title">AnatoNurse 3D</div>
+        <span class="brand-subtitle">Interactive Multi-Layer Clinical Anatomy & Nursing Assessment Atlas</span>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="structure-search" class="search-input" placeholder="Search organ, bone, site..." autocomplete="off" />
+        <div id="search-dropdown" class="search-dropdown"></div>
+      </div>
+      <button class="btn" id="btn-toggle-pins" title="Toggle Nursing Assessment Markers">
+        <span>🩺</span> <span class="hide-xs">Assessment Pins</span>
+      </button>
+      <button class="btn" id="btn-reset-all" title="Reset All Layers & Camera">
+        <span>↺</span> <span class="hide-xs">Reset</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Master Layer Peel Slider Banner -->
+  <div class="peel-banner">
+    <span class="peel-label">🧅 Peel Depth</span>
+    <input type="range" id="master-peel-slider" class="peel-slider" min="0" max="100" value="18" />
+    <span id="peel-stage-badge" class="peel-stage-badge">Muscular Surface</span>
+  </div>
+
+  <!-- Left Panel: Layer Stripping, Dissection & Physiology Controls -->
+  <aside class="left-panel" id="left-panel">
+    <div class="panel-header">
+      <h2>Anatomical Layers (7 Systems)</h2>
+      <button class="btn btn-sm" id="btn-show-all-layers">Show All</button>
+    </div>
+    <div class="panel-body">
+      <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+        Strip away layers from superficial to deep, or adjust individual system opacity below:
+      </p>
+
+      <!-- Dynamic Layer Cards Container -->
+      <div id="layers-list"></div>
+
+      <div class="section-subtitle">
+        <span>Spatial Separation & Cross-Section</span>
+      </div>
+      <div class="layer-card">
+        <div class="layer-top">
+          <span class="layer-name" style="font-size:12px;">Explode Systems Radially</span>
+          <span class="layer-pct" id="explode-val">0%</span>
+        </div>
+        <input type="range" id="explode-slider" class="layer-slider" style="width:100%" min="0" max="100" value="0" />
+
+        <div class="layer-top" style="margin-top: 10px;">
+          <span class="layer-name" style="font-size:12px;">Sagittal / Axial Clip Plane</span>
+          <span class="layer-pct" id="clip-val">Off</span>
+        </div>
+        <input type="range" id="clip-slider" class="layer-slider" style="width:100%" min="0" max="100" value="100" />
+      </div>
+
+      <div class="section-subtitle">
+        <span>Dissection & Hidden Structures</span>
+        <button class="btn btn-sm" id="btn-unhide-all" style="display:none;">Restore Hidden (0)</button>
+      </div>
+      <div class="btn-grid">
+        <button class="btn btn-sm" id="btn-peel-anterior-ribs" title="Remove anterior ribs & sternum to expose heart and lungs">Open Thoracic Cage</button>
+        <button class="btn btn-sm" id="btn-xray-mode" title="Ghost unselected structures">X-Ray Ghost</button>
+        <button class="btn btn-sm" id="btn-wireframe-mode" title="Toggle mesh wireframe overlay">Mesh Contours</button>
+      </div>
+
+      <div class="section-subtitle">
+        <span>Live Physiology Simulation</span>
+      </div>
+      <div class="vitals-strip">
+        <div class="vital-box">
+          <span class="heart-pulse-dot" id="heart-dot"></span>
+          <span>HR: <strong id="hr-label">72</strong> BPM</span>
+        </div>
+        <input type="range" id="hr-slider" min="40" max="150" value="72" style="width: 90px; accent-color: #ef4444;" />
+        <div class="vital-box">
+          <span>RR: <strong id="rr-label">16</strong>/min</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Panel: Clinical Inspector, Assessment Landmarks & Nursing Quiz -->
+  <aside class="right-panel" id="right-panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" data-tab="inspector">🔬 Inspector</button>
+      <button class="panel-tab" data-tab="assessment">🩺 Assessment</button>
+      <button class="panel-tab" data-tab="quiz">🎓 Nursing Quiz</button>
+    </div>
+
+    <!-- TAB 1: Structure Clinical Inspector -->
+    <div class="panel-body" id="tab-inspector">
+      <div id="inspector-content"></div>
+    </div>
+
+    <!-- TAB 2: Nursing Assessment Sites -->
+    <div class="panel-body" id="tab-assessment" style="display: none;">
+      <div style="display:flex; gap:5px; margin-bottom:10px; flex-wrap:wrap;">
+        <button class="btn btn-sm active" data-assess-filter="all">All (14)</button>
+        <button class="btn btn-sm" data-assess-filter="cardiac">❤️ Cardiac (5)</button>
+        <button class="btn btn-sm" data-assess-filter="respiratory">🫁 Lung (3)</button>
+        <button class="btn btn-sm" data-assess-filter="injection">💉 IM Sites (3)</button>
+        <button class="btn btn-sm" data-assess-filter="abdominal">✋ Palpation (3)</button>
+      </div>
+      <div id="assessment-list"></div>
+    </div>
+
+    <!-- TAB 3: Nursing Quiz & Flashcard Mode -->
+    <div class="panel-body" id="tab-quiz" style="display: none;">
+      <div style="display:flex; gap:6px; margin-bottom:12px;">
+        <button class="btn btn-sm active" id="quiz-mode-locate" style="flex:1;">🎯 Find on 3D Model</button>
+        <button class="btn btn-sm" id="quiz-mode-mcq" style="flex:1;">📋 Clinical NCLEX MCQ</button>
+      </div>
+      <div id="quiz-container"></div>
+    </div>
+  </aside>
+
+  <!-- Bottom Camera Presets Dock -->
+  <div class="camera-dock">
+    <button class="btn btn-sm" data-cam="anterior">Anterior</button>
+    <button class="btn btn-sm" data-cam="posterior">Posterior</button>
+    <button class="btn btn-sm" data-cam="lateral">Right Lateral</button>
+    <button class="btn btn-sm" data-cam="thorax">Thorax / Heart</button>
+    <button class="btn btn-sm" data-cam="abdomen">Abdomen / GI</button>
+    <button class="btn btn-sm" data-cam="head">Head & Brain</button>
+  </div>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="mobile-nav">
+    <button class="mobile-nav-btn" data-mobile-panel="none">
+      <span>🧍</span>
+      <span>3D View</span>
+    </button>
+    <button class="mobile-nav-btn" data-mobile-panel="left">
+      <span>🧅</span>
+      <span>Layers</span>
+    </button>
+    <button class="mobile-nav-btn active" data-mobile-panel="inspector">
+      <span>🔬</span>
+      <span>Inspector</span>
+    </button>
+    <button class="mobile-nav-btn" data-mobile-panel="assessment">
+      <span>🩺</span>
+      <span>Sites</span>
+    </button>
+    <button class="mobile-nav-btn" data-mobile-panel="quiz">
+      <span>🎓</span>
+      <span>Quiz</span>
+    </button>
+  </nav>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ============================================================================
+    // 1. ANATOMICAL SYSTEMS & CLINICAL KNOWLEDGE DATABASE
+    // ============================================================================
+    const SYSTEMS = [
+      {
+        id: 'integumentary',
+        name: 'Integumentary (Skin)',
+        depthOrder: 1,
+        color: '#e8b49a',
+        defaultOpacity: 0.22,
+        visible: true,
+        explodeVec: new THREE.Vector3(0, 0, 0.35),
+        description: 'Outer protective cutaneous envelope, subcutaneous tissue, and surface palpation landmarks.'
+      },
+      {
+        id: 'muscular',
+        name: 'Muscular System',
+        depthOrder: 2,
+        color: '#c84b4b',
+        defaultOpacity: 0.85,
+        visible: true,
+        explodeVec: new THREE.Vector3(-0.42, 0, 0.15),
+        description: 'Skeletal muscles providing posture, locomotion, thermogenesis, and intramuscular (IM) injection landmarks.'
+      },
+      {
+        id: 'skeletal',
+        name: 'Skeletal System',
+        depthOrder: 3,
+        color: '#e8e2d5',
+        defaultOpacity: 1.0,
+        visible: true,
+        explodeVec: new THREE.Vector3(0.42, 0, 0.15),
+        description: '206 axial and appendicular bones protecting vital organs, storing minerals, and housing red bone marrow.'
+      },
+      {
+        id: 'respiratory',
+        name: 'Respiratory System',
+        depthOrder: 4,
+        color: '#f48fb1',
+        defaultOpacity: 1.0,
+        visible: true,
+        explodeVec: new THREE.Vector3(-0.28, 0.05, -0.15),
+        description: 'Nasopharynx, larynx, trachea, bronchial tree, and lungs responsible for alveolar gas exchange (O₂/CO₂).'
+      },
+      {
+        id: 'digestive',
+        name: 'Digestive (GI) System',
+        depthOrder: 5,
+        color: '#ffb74d',
+        defaultOpacity: 1.0,
+        visible: true,
+        explodeVec: new THREE.Vector3(0.28, -0.05, -0.15),
+        description: 'Gastrointestinal tract and accessory organs (liver, gallbladder, pancreas, spleen) for digestion and metabolism.'
+      },
+      {
+        id: 'cardiovascular',
+        name: 'Cardiovascular System',
+        depthOrder: 6,
+        color: '#ef4444',
+        defaultOpacity: 1.0,
+        visible: true,
+        explodeVec: new THREE.Vector3(0, 0, -0.32),
+        description: 'Four-chambered heart and systemic/pulmonary arterial and venous vasculature.'
+      },
+      {
+        id: 'nervous',
+        name: 'Nervous System',
+        depthOrder: 7,
+        color: '#facc15',
+        defaultOpacity: 1.0,
+        visible: true,
+        explodeVec: new THREE.Vector3(0, 0.18, -0.45),
+        description: 'Central nervous system (brain & spinal cord) and major peripheral plexuses and nerves.'
+      }
+    ];
+
+    const ANATOMY_DB = {
+      // INTEGUMENTARY
+      skin_envelope: {
+        name: 'Cutaneous Skin Envelope & Surface Landmarks',
+        latin: 'Cutis (Epidermis, Dermis, Tela subcutanea)',
+        system: 'integumentary',
+        region: 'Full Body Surface',
+        bloodSupply: 'Cutaneous arterial plexuses & perforating vessels',
+        innervation: 'Cutaneous sensory dermatomes (C2–S5) & sympathetic autonomic fibers',
+        description: 'The largest organ of the body (~16% of body weight), consisting of the epidermis, dermis, and subcutaneous hypodermis. Provides barrier protection, thermoregulation via sweat and vasomotor control, and cutaneous sensation.',
+        nursingPearls: [
+          'Assess skin turgor (over clavicle or sternum in older adults) to evaluate hydration status.',
+          'Stage pressure injuries (Stages 1–4, Unstageable, DTI) over bony prominences: sacrum, heels, ischial tuberosities, and greater trochanters.',
+          'Inspect for central cyanosis (lips, oral mucosa) vs. peripheral cyanosis (nail beds) and jaundice (sclera, palms).'
+        ]
+      },
+
+      // MUSCULAR
+      pectoralis_major: {
+        name: 'Pectoralis Major Muscle',
+        latin: 'Musculus pectoralis major',
+        system: 'muscular',
+        region: 'Anterior Thorax',
+        bloodSupply: 'Pectoral branches of thoracoacromial trunk & internal thoracic artery',
+        innervation: 'Medial and lateral pectoral nerves (C5–T1)',
+        description: 'Thick, fan-shaped superficial muscle of the anterior chest wall originating from the clavicle, sternum, and costal cartilages (ribs 1–6) and inserting into the intertubercular sulcus of the humerus. Adducts, flexes, and internally rotates the humerus.',
+        nursingPearls: [
+          'Forms the anterior axillary fold; landmarks deep to it include the 2nd–5th intercostal spaces used for precordial cardiac auscultation.',
+          'Accessory muscle of inspiration during acute respiratory distress when the arms are braced.'
+        ]
+      },
+      deltoid: {
+        name: 'Deltoid Muscle',
+        latin: 'Musculus deltoideus',
+        system: 'muscular',
+        region: 'Shoulder (Left & Right)',
+        bloodSupply: 'Posterior circumflex humeral artery & deltoid branch of thoracoacromial artery',
+        innervation: 'Axillary nerve (C5–C6)',
+        description: 'Multipennate triangular muscle forming the rounded contour of the shoulder. Originates from the lateral clavicle, acromion, and spine of the scapula, inserting onto the deltoid tuberosity of the humerus. Primary abductor of the arm beyond 15°.',
+        nursingPearls: [
+          'Primary adult vaccination site (IM): Locate the acromion process and inject 2–3 fingerbreadths (3–5 cm) inferiorly into the central thickest muscle belly.',
+          'Limit volume to ≤ 1 mL (max 2 mL in large adults) and avoid injecting too low or posteriorly to prevent axillary or radial nerve injury.'
+        ]
+      },
+      sternocleidomastoid: {
+        name: 'Sternocleidomastoid (SCM) Muscle',
+        latin: 'Musculus sternocleidomastoideus',
+        system: 'muscular',
+        region: 'Anterolateral Neck',
+        bloodSupply: 'Occipital and superior thyroid arteries',
+        innervation: 'Spinal Accessory Nerve (CN XI) & C2–C3 proprioception',
+        description: 'Two-headed neck muscle running obliquely from the manubrium of the sternum and medial clavicle to the mastoid process of the temporal bone. Unilateral contraction rotates the head to the opposite side; bilateral contraction flexes the neck.',
+        nursingPearls: [
+          'Prominent contraction during quiet breathing indicates accessory muscle use (COPD exacerbation, asthma attack, impending respiratory failure).',
+          'Carotid pulse is palpated just medial to the SCM at the level of the thyroid cartilage (palpate one side at a time).',
+          'Internal jugular vein (IJV) central line landmark lies at the apex of the triangle formed by the sternal and clavicular heads of the SCM.'
+        ]
+      },
+      diaphragm: {
+        name: 'Thoracic Diaphragm',
+        latin: 'Diaphragma',
+        system: 'muscular',
+        region: 'Thoracoabdominal Partition',
+        bloodSupply: 'Superior and inferior phrenic arteries, musculophrenic arteries',
+        innervation: 'Phrenic nerve (C3, C4, C5 — "C3, 4, 5 keeps the diaphragm alive")',
+        description: 'Dome-shaped musculotendinous septum separating the thoracic cavity from the abdominal cavity. The primary muscle of inspiration: contraction flattens the dome, increasing vertical thoracic volume and drawing air into the lungs.',
+        nursingPearls: [
+          'High cervical spinal cord injuries at or above C3–C5 paralyze the diaphragm, requiring immediate mechanical ventilation.',
+          'Diaphragmatic irritation (e.g., subphrenic abscess, ruptured spleen, post-laparoscopic CO₂ gas) causes referred pain to the ipsilateral shoulder tip (Kehr sign) via C3–C5 dermatomes.'
+        ]
+      },
+      rectus_abdominis: {
+        name: 'Rectus Abdominis & Oblique Muscles',
+        latin: 'Musculus rectus abdominis et obliquus externus',
+        system: 'muscular',
+        region: 'Anterior Abdominal Wall',
+        bloodSupply: 'Superior and inferior epigastric arteries',
+        innervation: 'Thoracoabdominal nerves (T7–T12)',
+        description: 'Paired strap-like muscles separated at the midline by the linea alba and intersected by fibrous tendinous inscriptions, flanked laterally by the external and internal obliques. Flexes the lumbar spine, compresses abdominal viscera, and assists forced expiration.',
+        nursingPearls: [
+          'Involuntary board-like rigidity of the rectus abdominis during palpation is a classic sign of peritonitis.',
+          'Subcutaneous injections (heparin, enoxaparin, insulin) are given into the abdominal adipose layer at least 2 inches (5 cm) away from the umbilicus.'
+        ]
+      },
+      biceps_triceps: {
+        name: 'Biceps Brachii & Triceps Brachii',
+        latin: 'M. biceps brachii et M. triceps brachii',
+        system: 'muscular',
+        region: 'Upper Arm (Brachium)',
+        bloodSupply: 'Brachial and profunda brachii arteries',
+        innervation: 'Musculocutaneous nerve (C5–C6, Biceps) & Radial nerve (C6–C8, Triceps)',
+        description: 'Anterior compartment biceps brachii flexes the elbow and powerfully supinates the forearm; posterior compartment triceps brachii extends the forearm at the elbow joint.',
+        nursingPearls: [
+          'Biceps deep tendon reflex tests C5–C6 spinal integrity; Triceps reflex tests C7–C8.',
+          'Brachial artery runs along the medial bicipital groove—place the stethoscope bell medial to the biceps tendon in the antecubital fossa for accurate blood pressure measurement.'
+        ]
+      },
+      gluteal_group: {
+        name: 'Gluteus Medius, Minimus & Maximus',
+        latin: 'Mm. glutei (maximus, medius, minimus)',
+        system: 'muscular',
+        region: 'Pelvic / Gluteal Region',
+        bloodSupply: 'Superior and inferior gluteal arteries',
+        innervation: 'Superior gluteal nerve (L4–S1, Medius/Minimus) & Inferior gluteal nerve (L5–S2, Maximus)',
+        description: 'Powerful extensor and abductor musculature of the hip joint. Gluteus medius and minimus stabilize the pelvis during single-leg stance; gluteus maximus extends the thigh.',
+        nursingPearls: [
+          'Ventrogluteal site (gluteus medius/minimus) is the safest, evidence-based site for deep IM injections (>1 mL, viscous or irritating medications) because it is free of major nerves and blood vessels.',
+          'Avoid the dorsogluteal (gluteus maximus) site due to high risk of sciatic nerve injury and superior gluteal artery puncture.'
+        ]
+      },
+      quadriceps_femoris: {
+        name: 'Quadriceps Femoris (incl. Vastus Lateralis)',
+        latin: 'Musculus quadriceps femoris (Vastus lateralis, Rectus femoris)',
+        system: 'muscular',
+        region: 'Anterior & Lateral Thigh',
+        bloodSupply: 'Lateral femoral circumflex and femoral arteries',
+        innervation: 'Femoral nerve (L2–L4)',
+        description: 'Four-headed anterior thigh muscle group (Rectus femoris, Vastus lateralis, Vastus medialis, Vastus intermedius) uniting at the quadriceps tendon and patellar ligament to extend the knee.',
+        nursingPearls: [
+          'Vastus Lateralis (anterolateral middle third of thigh, between greater trochanter and lateral femoral condyle) is the preferred IM injection site for infants and toddlers (<2 years) and epinephrine auto-injectors.',
+          'Patellar reflex (knee-jerk) evaluates L2–L4 femoral nerve integrity.'
+        ]
+      },
+      gastrocnemius_soleus: {
+        name: 'Gastrocnemius, Soleus & Tibialis Anterior',
+        latin: 'M. triceps surae et M. tibialis anterior',
+        system: 'muscular',
+        region: 'Lower Leg (Crus)',
+        bloodSupply: 'Posterior and anterior tibial arteries',
+        innervation: 'Tibial nerve (S1–S2) & Deep fibular nerve (L4–L5)',
+        description: 'Calf plantarflexors (gastrocnemius and soleus) act as the "peripheral venous heart," compressing deep calf veins during ambulation to propel venous blood back toward the right atrium.',
+        nursingPearls: [
+          'Deep Vein Thrombosis (DVT) frequently forms in the soleal venous sinuses; assess for unilateral calf swelling, warmth, erythema, and tenderness (note: Homans sign is unreliable).',
+          'Sequential compression devices (SCDs) and early ambulation mimic the calf muscle pump to prevent venous thromboembolism (VTE).'
+        ]
+      },
+
+      // SKELETAL
+      cranium_mandible: {
+        name: 'Skull (Cranium & Mandible)',
+        latin: 'Cranium et Mandibula',
+        system: 'skeletal',
+        region: 'Head / Axial Skeleton',
+        bloodSupply: 'External and internal carotid branches, middle meningeal artery',
+        innervation: 'Trigeminal nerve (CN V) sensory; Facial nerve (CN VII) & CN V3 motor',
+        description: 'Bony neurocranium (frontal, parietal, temporal, occipital, sphenoid, ethmoid bones) encasing the brain, paired with the facial skeleton and movable mandible (TMJ).',
+        nursingPearls: [
+          'Basilar skull fractures present with Battle sign (mastoid ecchymosis), raccoon eyes (periorbital ecchymosis), and CSF rhinorrhea/otorrhea—NEVER insert a nasogastric (NG) tube if basilar skull fracture is suspected!',
+          'The pterion (temple region) overlies the middle meningeal artery; trauma here can cause life-threatening epidural hematoma.'
+        ]
+      },
+      sternum: {
+        name: 'Sternum (Manubrium, Angle of Louis, Body, Xiphoid)',
+        latin: 'Sternum (Manubrium, Corpus, Processus xiphoideus)',
+        system: 'skeletal',
+        region: 'Anterior Midline Thorax',
+        bloodSupply: 'Internal thoracic (mammary) artery',
+        innervation: 'Intercostal nerves (T1–T6)',
+        description: 'Flat T-shaped anterior thoracic bone composed of the superior manubrium, central body, and inferior cartilaginous xiphoid process. Articulates with the clavicles and costal cartilages of ribs 1–7.',
+        nursingPearls: [
+          'Angle of Louis (Manubriosternal junction): Palpable transverse ridge where the 2nd rib attaches—essential bedside landmark for counting intercostal spaces for ECG lead placement and cardiac auscultation.',
+          'High-quality adult CPR compressions are performed on the lower half of the sternum (2–2.4 inches / 5–6 cm deep at 100–120/min); avoid compressing directly over the xiphoid process to prevent hepatic laceration.'
+        ]
+      },
+      rib_cage: {
+        name: 'Thoracic Rib Cage (12 Pairs of Ribs)',
+        latin: 'Costae (I–XII) et Cartilagines costales',
+        system: 'skeletal',
+        region: 'Thoracic Cage',
+        bloodSupply: 'Posterior and anterior intercostal arteries',
+        innervation: 'Intercostal nerves (T1–T11) & Subcostal nerve (T12)',
+        description: 'Twelve pairs of curved flat bones forming the protective semirigid thoracic cage. Ribs 1–7 are true (vertebrosternal) ribs, ribs 8–10 are false (vertebrochondral) ribs, and ribs 11–12 are floating ribs protecting the superior poles of the kidneys.',
+        nursingPearls: [
+          'The neurovascular bundle (Vein, Artery, Nerve — VAN) runs in the costal groove along the INFERIOR border of each rib. Thoracentesis and chest tubes must always be inserted just ABOVE the superior rib border!',
+          'Fracture of ≥3 adjacent ribs in ≥2 places causes Flail Chest with paradoxical chest wall movement.'
+        ]
+      },
+      vertebral_column: {
+        name: 'Vertebral Column (Cervical, Thoracic, Lumbar, Sacrum)',
+        latin: 'Columna vertebralis (C1–C7, T1–T12, L1–L5, Sacrum)',
+        system: 'skeletal',
+        region: 'Posterior Axial Midline',
+        bloodSupply: 'Vertebral, intercostal, lumbar, and lateral sacral arteries',
+        innervation: 'Meningeal branches & dorsal rami of spinal nerves',
+        description: 'Segmented axial column of 33 vertebrae separated by fibrocartilaginous intervertebral discs, enclosing and protecting the spinal cord and cauda equina.',
+        nursingPearls: [
+          'In adults, the spinal cord terminates at L1–L2 (conus medullaris); Lumbar Puncture (LP) and spinal anesthesia are safely performed at L3–L4 or L4–L5 interspaces (palpated across the supracristal line joining the iliac crests).',
+          'Maintain strict spinal immobilization and log-roll precautions in trauma patients until cervical/thoracolumbar clearance.'
+        ]
+      },
+      clavicle_scapula: {
+        name: 'Clavicles & Scapulae (Pectoral Girdle)',
+        latin: 'Clavicula et Scapula',
+        system: 'skeletal',
+        region: 'Shoulder Girdle',
+        bloodSupply: 'Suprascapular, thoracoacromial, and circumflex scapular arteries',
+        innervation: 'Supraclavicular and suprascapular nerves',
+        description: 'The S-shaped clavicle acts as a strut connecting the sternum to the acromion of the triangular scapula, suspending the upper limb away from the thorax.',
+        nursingPearls: [
+          'The midclavicular line (vertical line dropping from the midpoint of the clavicle) is a critical reference line for the apical impulse (PMI at 5th ICS MCL) and needle decompression (2nd ICS MCL).',
+          'Subclavian central venous catheterization is accessed just inferior to the junction of the middle and medial thirds of the clavicle.'
+        ]
+      },
+      pelvic_girdle: {
+        name: 'Pelvic Girdle (Ilium, Ischium, Pubis, ASIS)',
+        latin: 'Pelvis ossea (Os coxae: Ilium, Ischium, Pubis)',
+        system: 'skeletal',
+        region: 'Pelvis',
+        bloodSupply: 'Internal and external iliac arteries',
+        innervation: 'Lumbosacral plexus branches',
+        description: 'Basin-shaped ring of bones connecting the axial skeleton to the lower limbs. Key palpable landmarks include the Iliac Crest, Anterior Superior Iliac Spine (ASIS), Posterior Superior Iliac Spine (PSIS), Ischial Tuberosity, and Pubic Symphysis.',
+        nursingPearls: [
+          'The Posterior Superior Iliac Crest (and ASIS) is the preferred site for Bone Marrow Aspiration & Biopsy in adults.',
+          'Unstable pelvic ring fractures can shear the pelvic venous plexus and internal iliac branches, causing retroperitoneal hemorrhage (>2–3 L blood loss)—stabilize immediately with a pelvic binder over the greater trochanters.'
+        ]
+      },
+      upper_limb_bones: {
+        name: 'Humerus, Radius & Ulna',
+        latin: 'Humerus, Radius et Ulna',
+        system: 'skeletal',
+        region: 'Upper Appendicular Skeleton',
+        bloodSupply: 'Brachial, radial, and ulnar nutrient arteries',
+        innervation: 'Musculocutaneous, radial, median, and ulnar nerves',
+        description: 'Long bones of the upper extremity: the humerus articulates at the glenohumeral and elbow joints; the lateral radius ("thumb side") and medial ulna ("pinky side") enable pronation and supination.',
+        nursingPearls: [
+          'Proximal humerus head is a key adult Intraosseous (IO) vascular access site during cardiac arrest or shock when IV access fails (immobilize arm across abdomen to prevent needle dislodgement).',
+          'Midshaft humeral fractures risk Radial Nerve injury (wrist drop); supracondylar fractures risk Brachial Artery and Median Nerve compromise (Volkmann contracture).'
+        ]
+      },
+      lower_limb_bones: {
+        name: 'Femur, Patella, Tibia & Fibula',
+        latin: 'Femur, Patella, Tibia et Fibula',
+        system: 'skeletal',
+        region: 'Lower Appendicular Skeleton',
+        bloodSupply: 'Femoral, profunda femoris, popliteal, and tibial arteries',
+        innervation: 'Femoral, obturator, and sciatic nerves',
+        description: 'Weight-bearing bones of the lower extremity. The femur is the longest, strongest bone in the body; the tibia bears weight medially in the lower leg alongside the slender lateral fibula.',
+        nursingPearls: [
+          'Femoral neck / intertrochanteric hip fractures classically present with a shortened, externally rotated leg.',
+          'Long-bone femoral shaft fractures carry a high risk of Fat Embolism Syndrome (24–72 hrs post-injury: classic triad of hypoxemia, neurological confusion, and petechial rash on chest/neck).',
+          'Proximal medial tibia (1–2 cm inferior and medial to the tibial tuberosity) is a primary emergency Intraosseous (IO) infusion site.'
+        ]
+      },
+
+      // CARDIOVASCULAR
+      heart: {
+        name: 'Heart (Four Chambers & Coronary Vessels)',
+        latin: 'Cor',
+        system: 'cardiovascular',
+        region: 'Middle Mediastinum (Thorax)',
+        bloodSupply: 'Left Main Coronary Artery (LAD, LCx) & Right Coronary Artery (RCA)',
+        innervation: 'Autonomic Cardiac Plexus: Vagus nerve (CN X, parasympathetic slows HR) & Sympathetic chains (T1–T4, increases HR & contractility)',
+        description: 'Muscular double pump located in the middle mediastinum between the lungs, Resting obliquely with 2/3 of its mass to the left of the midline. Right atrium & ventricle pump deoxygenated blood to the lungs; Left atrium & thick-walled Left ventricle pump oxygenated blood into the systemic aorta.',
+        nursingPearls: [
+          'Point of Maximal Impulse (PMI / Apical Pulse) is palpated and auscultated at the 5th Left Intercostal Space, Midclavicular Line (auscultate for 1 full minute before administering Digoxin or Beta-blockers).',
+          'S1 ("Lub") is closure of mitral/tricuspid valves (loudest at apex); S2 ("Dub") is closure of aortic/pulmonic valves (loudest at base).',
+          'Coronary arteries perfuse primarily during DIASTOLE; tachycardia shortens diastole and worsens myocardial ischemia.'
+        ]
+      },
+      arterial_tree: {
+        name: 'Aorta & Systemic Arterial Tree',
+        latin: 'Aorta (ascendens, arcus, thoracica, abdominalis) et Arteriae',
+        system: 'cardiovascular',
+        region: 'Thoracic, Abdominal & Peripheral Vasculature',
+        bloodSupply: 'Vasa vasorum (outer tunica adventitia)',
+        innervation: 'Sympathetic vasomotor fibers & Carotid/Aortic Baroreceptors (CN IX, CN X)',
+        description: 'High-pressure elastic and muscular conduit system originating at the aortic valve: Ascending Aorta → Aortic Arch (Brachiocephalic, Left Common Carotid, Left Subclavian) → Descending Thoracic Aorta → Abdominal Aorta (celiac, mesenteric, renal branches) → Common Iliac & Femoral Arteries.',
+        nursingPearls: [
+          'Abdominal Aortic Aneurysm (AAA) presents as a pulsatile periumbilical mass with a bruit—NEVER deeply palpate a known or suspected AAA due to rupture risk! Sudden tearing back/flank pain + hypotension signals rupture.',
+          'Perform Allen test before radial arterial line insertion or ABG puncture to verify collateral ulnar perfusion.'
+        ]
+      },
+      venous_tree: {
+        name: 'Superior/Inferior Vena Cava & Venous System',
+        latin: 'Vena cava superior et inferior, Venae jugulares et femorales',
+        system: 'cardiovascular',
+        region: 'Systemic Venous Return',
+        bloodSupply: 'Vasa vasorum',
+        innervation: 'Sympathetic venoconstrictor fibers',
+        description: 'Low-pressure capacitance system with one-way intraluminal valves returning systemic venous blood to the right atrium via the Superior Vena Cava (head, neck, upper limbs) and Inferior Vena Cava (abdomen, pelvis, lower limbs).',
+        nursingPearls: [
+          'Jugular Venous Distention (JVD) assessed with head of bed at 30°–45° reflects elevated Right Atrial / Central Venous Pressure (right-sided heart failure, cardiac tamponade, tension pneumothorax).',
+          'Central Venous Catheter (PICC, IJV, Subclavian) tip should terminate at the Cavoatrial Junction (lower SVC just above the right atrium), confirmed by chest X-ray prior to use.'
+        ]
+      },
+
+      // RESPIRATORY
+      trachea_bronchi: {
+        name: 'Larynx, Trachea & Bronchial Tree',
+        latin: 'Larynx, Trachea et Bronchi principales',
+        system: 'respiratory',
+        region: 'Anterior Neck & Superior Mediastinum',
+        bloodSupply: 'Inferior thyroid and bronchial arteries',
+        innervation: 'Vagus nerve (CN X) — Recurrent laryngeal nerve & pulmonary plexus',
+        description: 'Conducting airway supported by hyaline cartilage (thyroid/cricoid cartilages and 16–20 C-shaped tracheal rings) that bifurcates at the Carina (level of T4/T5, Sternal Angle) into the Right and Left Mainstem Bronchi.',
+        nursingPearls: [
+          'The Right Mainstem Bronchus is wider, shorter, and more vertical than the left—endotracheal (ET) tubes advanced too far and aspirated foreign bodies preferentially enter the right lung!',
+          'Tracheal deviation AWAY from the affected side is a late, life-threatening sign of Tension Pneumothorax.',
+          'After thyroidectomy, monitor closely for stridor, hoarseness, or dyspnea caused by recurrent laryngeal nerve injury or hematoma.'
+        ]
+      },
+      right_lung: {
+        name: 'Right Lung (Superior, Middle & Inferior Lobes)',
+        latin: 'Pulmo dexter (Lobi superior, medius, inferior)',
+        system: 'respiratory',
+        region: 'Right Hemithorax',
+        bloodSupply: 'Right pulmonary artery (gas exchange) & bronchial arteries (parenchymal nutrition)',
+        innervation: 'Pulmonary plexus (Vagus CN X bronchoconstriction; Sympathetic T2–T4 bronchodilation)',
+        description: 'Three-lobed spongy parenchymal organ divided by the oblique and horizontal fissures. Shorter and broader than the left lung due to the underlying dome of the right liver lobe.',
+        nursingPearls: [
+          'The Right Middle Lobe is best auscultated at the 4th–5th Right Intercostal Space between the midclavicular and midaxillary lines.',
+          'Aspiration pneumonia in supine patients most commonly affects the superior segment of the Right Lower Lobe.'
+        ]
+      },
+      left_lung: {
+        name: 'Left Lung (Superior & Inferior Lobes + Lingula)',
+        latin: 'Pulmo sinister (Lobi superior et inferior, Incisura cardiaca)',
+        system: 'respiratory',
+        region: 'Left Hemithorax',
+        bloodSupply: 'Left pulmonary artery & left bronchial arteries',
+        innervation: 'Pulmonary plexus (CN X & Sympathetic chain)',
+        description: 'Two-lobed lung divided by the oblique fissure. Features a prominent anterior concavity—the Cardiac Notch—and the tongue-like Lingula to accommodate the apex of the heart.',
+        nursingPearls: [
+          'Always compare lung sounds side-to-side in a ladder pattern (anterior, lateral, and posterior chest) listening for crackles (fluid/atelectasis), wheezes (bronchospasm), or diminished/absent sounds (pneumothorax/effusion).'
+        ]
+      },
+
+      // DIGESTIVE
+      liver: {
+        name: 'Liver (Right & Left Hepatic Lobes)',
+        latin: 'Hepar',
+        system: 'digestive',
+        region: 'Right Upper Quadrant (RUQ) & Epigastrium',
+        bloodSupply: 'Dual supply: Hepatic Portal Vein (~75% nutrient-rich GI blood) & Hepatic Artery Proper (~25% oxygen-rich blood)',
+        innervation: 'Celiac plexus (Sympathetic T7–T12 & Vagus CN X)',
+        description: 'Largest internal metabolic organ (~1.5 kg), sheltered beneath ribs 7–11 in the RUQ. Synthesizes plasma proteins (albumin, clotting factors II, VII, IX, X), produces bile, detoxifies drugs/ammonia (into urea), and stores glycogen.',
+        nursingPearls: [
+          'Hepatic failure / cirrhosis leads to decreased albumin (ascites, peripheral edema), decreased clotting factors (elevated PT/INR, bleeding risk), portal hypertension (esophageal varices), and elevated ammonia (hepatic encephalopathy—assess for asterixis/liver flap).',
+          'Prior to percutaneous Liver Biopsy, verify PT/INR and platelet count; afterward, position the patient on their RIGHT side for 2 hours to tamponade the puncture site against the rib cage.'
+        ]
+      },
+      gallbladder: {
+        name: 'Gallbladder & Biliary Tract',
+        latin: 'Vesica biliaris',
+        system: 'digestive',
+        region: 'Right Upper Quadrant (Inferior Hepatic Surface)',
+        bloodSupply: 'Cystic artery (branch of right hepatic artery)',
+        innervation: 'Celiac plexus & Vagus nerve (CN X)',
+        description: 'Pear-shaped fibromuscular sac nestled on the visceral surface of the right liver lobe. Concentrates and stores 30–50 mL of hepatic bile, contracting in response to Cholecystokinin (CCK) after fatty meals to release bile via the cystic and common bile ducts into the duodenum.',
+        nursingPearls: [
+          'Positive Murphy Sign: Inspiratory arrest upon deep RUQ palpation beneath the right costal margin at the midclavicular line, classic for acute cholecystitis.',
+          'Biliary colic often radiates to the right scapula/shoulder and is triggered by high-fat meals.'
+        ]
+      },
+      stomach: {
+        name: 'Stomach & Esophagus',
+        latin: 'Gaster (Ventriculus) et Oesophagus',
+        system: 'digestive',
+        region: 'Left Upper Quadrant (LUQ) & Epigastrium',
+        bloodSupply: 'Celiac trunk branches (Left/Right Gastric, Gastroepiploic, Short Gastric arteries)',
+        innervation: 'Anterior and posterior vagal trunks (CN X) & Celiac sympathetic plexus',
+        description: 'Muscular J-shaped expansion of the GI tract (Cardia, Fundus, Body, Pyloric Antrum, Pyloric Sphincter) connected superiorly to the esophagus via the Lower Esophageal Sphincter (LES). Secretes HCl, pepsinogen, and intrinsic factor.',
+        nursingPearls: [
+          'Parietal cells secrete Intrinsic Factor required for Vitamin B12 absorption in the terminal ileum—patients post-gastrectomy require lifelong parenteral/high-dose Vitamin B12 to prevent pernicious anemia.',
+          'Confirm Nasogastric (NG) tube placement by chest/abdominal X-ray (gold standard) and gastric aspirate pH (≤ 5.5) before administering enteral feedings.'
+        ]
+      },
+      pancreas_spleen: {
+        name: 'Pancreas & Spleen',
+        latin: 'Pancreas et Splen (Lien)',
+        system: 'digestive',
+        region: 'Retroperitoneal Epigastrium (Pancreas) & LUQ (Spleen)',
+        bloodSupply: 'Splenic artery & Pancreaticoduodenal arteries',
+        innervation: 'Celiac and superior mesenteric plexuses',
+        description: 'The Pancreas has both exocrine acinar cells (secreting amylase, lipase, trypsinogen into the duodenum) and endocrine Islets of Langerhans (Beta cells: insulin; Alpha cells: glucagon). The Spleen in the posterolateral LUQ filters senescent RBCs and mounts immune responses against encapsulated bacteria.',
+        nursingPearls: [
+          'Acute Pancreatitis presents with severe boring epigastric pain radiating to the back, relieved by leaning forward, with elevated serum Lipase. Look for Grey Turner sign (flank ecchymosis) or Cullen sign (periumbilical ecchymosis) indicating hemorrhagic pancreatitis.',
+          'Splenic rupture (from LUQ trauma or infectious mononucleosis) causes acute hypovolemic shock and left shoulder pain (Kehr sign); post-splenectomy patients require vaccination against Pneumococcus, Meningococcus, and H. influenzae type b.'
+        ]
+      },
+      small_intestine: {
+        name: 'Small Intestine (Duodenum, Jejunum, Ileum)',
+        latin: 'Intestinum tenue (Duodenum, Jejunum, Ileum)',
+        system: 'digestive',
+        region: 'Central Abdominal Cavity (Umbilical Region)',
+        bloodSupply: 'Superior Mesenteric Artery (SMA) & Celiac trunk (proximal duodenum)',
+        innervation: 'Myenteric (Auerbach) & Submucosal (Meissner) enteric plexuses + Vagus (CN X)',
+        description: 'Approximately 6-meter convoluted tubular organ extending from the pylorus to the ileocecal valve. Primary site of enzymatic chemical digestion and nutrient, iron (duodenum), folate (jejunum), and Vitamin B12/bile salt (terminal ileum) absorption.',
+        nursingPearls: [
+          'Auscultate bowel sounds in all 4 quadrants BEFORE palpation or percussion (so palpation does not artificially alter peristalsis). Normal bowel sounds occur every 5–15 seconds (5–30/min).',
+          'High-pitched, tinkling "rushes" above an area of absent sounds suggest mechanical Small Bowel Obstruction (SBO).'
+        ]
+      },
+      large_intestine: {
+        name: 'Large Intestine (Cecum, Appendix, Colon, Rectum)',
+        latin: 'Intestinum crassum (Caecum, Appendix, Colon ascendens, transversum, descendens, sigmoideum)',
+        system: 'digestive',
+        region: 'Peripheral Abdominal Quadrants & Pelvis',
+        bloodSupply: 'Superior Mesenteric Artery (right/mid colon) & Inferior Mesenteric Artery (left/sigmoid colon)',
+        innervation: 'Vagus nerve (proximal), Pelvic splanchnic nerves S2–S4 (distal), and Enteric nervous system',
+        description: 'Frames the small intestine (~1.5 m long): Cecum & Vermiform Appendix in the RLQ → Ascending Colon → Hepatic Flexure → Transverse Colon → Splenic Flexure → Descending Colon → Sigmoid Colon → Rectum. Absorbs water/electrolytes and forms feces.',
+        nursingPearls: [
+          'McBurney Point (RLQ, 1/3 of the distance from the Right ASIS to the Umbilicus): Rebound tenderness (Blumberg sign) and Rovsing sign here indicate acute appendicitis. Sudden relief of pain may signal appendiceal perforation!',
+          'Diverticulitis most commonly affects the Sigmoid Colon in the Left Lower Quadrant (LLQ), presenting with LLQ pain, fever, and leukocytosis.'
+        ]
+      },
+
+      // NERVOUS
+      brain: {
+        name: 'Brain (Cerebrum, Cerebellum & Brainstem)',
+        latin: 'Encephalon (Cerebrum, Cerebellum, Truncus encephali)',
+        system: 'nervous',
+        region: 'Cranial Cavity',
+        bloodSupply: 'Circle of Willis (Internal Carotid & Vertebrobasilar arteries)',
+        innervation: 'Origin of Cranial Nerves CN I–XII',
+        description: 'Master control center of the nervous system: Cerebral hemispheres govern cognition, motor cortex (precentral gyrus), sensory cortex (postcentral gyrus), and speech (Broca/Wernicke areas); Cerebellum coordinates balance and fine motor precision; Brainstem (Midbrain, Pons, Medulla) regulates consciousness and cardiorespiratory drive.',
+        nursingPearls: [
+          'Cushing Triad of Increased Intracranial Pressure (ICP): Widening pulse pressure (systolic hypertension), Bradycardia, and Irregular respirations (Cheyne-Stokes)—this is a medical emergency indicating imminent brainstem herniation!',
+          'Use the Glasgow Coma Scale (GCS 3–15: Eye, Verbal, Motor) and pupillary light reflex (CN II / CN III) for serial neurological assessments.'
+        ]
+      },
+      spinal_cord_nerves: {
+        name: 'Spinal Cord, Brachial Plexus & Sciatic Nerves',
+        latin: 'Medulla spinalis, Plexus brachialis et Nervus ischiadicus',
+        system: 'nervous',
+        region: 'Vertebral Canal & Peripheral Trunks',
+        bloodSupply: 'Anterior and paired posterior spinal arteries, Artery of Adamkiewicz',
+        innervation: '31 pairs of spinal nerves (8 Cervical, 12 Thoracic, 5 Lumbar, 5 Sacral, 1 Coccygeal)',
+        description: 'Cylindrical CNS tract transmitting ascending sensory and descending motor pathways between the brain and body, giving rise to the Cervical/Brachial plexuses (upper limb), Intercostal nerves, and Lumbosacral plexus including the Femoral and Sciatic nerves (L4–S3).',
+        nursingPearls: [
+          'Autonomic Dysreflexia: In spinal cord injuries at T6 or above, a noxious stimulus below the lesion (most commonly a distended bladder or impacted bowel) triggers life-threatening severe hypertension, throbbing headache, and diaphoresis/flushing above the lesion. Immediate nursing action: Sit the patient upright (90°) to lower BP orthostatically and check bladder/catheter patency!',
+          'Sciatic nerve runs deep to the gluteus maximus—never use the dorsogluteal quadrant for IM injections.'
+        ]
+      }
+    };
+
+    // ============================================================================
+    // 2. NURSING ASSESSMENT SITES (3D PINS)
+    // ============================================================================
+    const ASSESSMENT_SITES = [
+      {
+        id: 'aortic_area',
+        name: 'Aortic Auscultation Area',
+        category: 'cardiac',
+        catLabel: 'Cardiac ("A" in APETM)',
+        color: '#ef4444',
+        pos: new THREE.Vector3(-0.032, 0.405, 0.148),
+        landmark: '2nd Right Intercostal Space (ICS), Right Sternal Border',
+        clinicalNotes: 'Auscultate with stethoscope diaphragm. S2 ("Dub") is louder than S1 here. Classic site to hear the harsh crescendo-decrescendo systolic ejection murmur of Aortic Stenosis (radiating to the carotid arteries).'
+      },
+      {
+        id: 'pulmonic_area',
+        name: 'Pulmonic Auscultation Area',
+        category: 'cardiac',
+        catLabel: 'Cardiac ("P" in APETM)',
+        color: '#ef4444',
+        pos: new THREE.Vector3(0.034, 0.405, 0.148),
+        landmark: '2nd Left Intercostal Space (ICS), Left Sternal Border',
+        clinicalNotes: 'S2 is louder than S1 here. Physiological splitting of S2 (A2 followed by P2) is best heard here during inspiration due to increased venous return to the right ventricle.'
+      },
+      {
+        id: 'erbs_point',
+        name: "Erb's Point",
+        category: 'cardiac',
+        catLabel: 'Cardiac ("E" in APETM)',
+        color: '#f97316',
+        pos: new THREE.Vector3(0.038, 0.365, 0.152),
+        landmark: '3rd Left Intercostal Space (ICS), Left Sternal Border',
+        clinicalNotes: 'Halfway between base and apex where S1 and S2 have approximately equal intensity. High-pitched blowing diastolic murmur of Aortic or Pulmonic Regurgitation and pericardial friction rubs are best heard here with patient leaning forward.'
+      },
+      {
+        id: 'tricuspid_area',
+        name: 'Tricuspid Auscultation Area',
+        category: 'cardiac',
+        catLabel: 'Cardiac ("T" in APETM)',
+        color: '#ef4444',
+        pos: new THREE.Vector3(0.042, 0.320, 0.152),
+        landmark: '4th Left Intercostal Space (ICS), Lower Left Sternal Border',
+        clinicalNotes: 'S1 ("Lub") is louder than S2 here. Best location to assess right ventricular S3/S4 gallops and the holosystolic murmur of Tricuspid Regurgitation or Ventricular Septal Defect (VSD).'
+      },
+      {
+        id: 'mitral_pmi',
+        name: 'Mitral (Apical) Area / PMI',
+        category: 'cardiac',
+        catLabel: 'Cardiac ("M" in APETM)',
+        color: '#ec4899',
+        pos: new THREE.Vector3(0.088, 0.282, 0.142),
+        landmark: '5th Left Intercostal Space (ICS), Midclavicular Line (MCL)',
+        clinicalNotes: 'Point of Maximal Impulse (PMI) over the left ventricular apex. S1 is loudest here. Always auscultate apical pulse for 60 full seconds before giving Digoxin (hold in adults if HR < 60 bpm). Use the BELL lightly to hear low-pitched S3 (heart failure) and S4 sounds.'
+      },
+      {
+        id: 'bronchovesicular_site',
+        name: 'Bronchovesicular Breath Sounds',
+        category: 'respiratory',
+        catLabel: 'Respiratory Auscultation',
+        color: '#38bdf8',
+        pos: new THREE.Vector3(-0.048, 0.435, 0.142),
+        landmark: '1st–2nd ICS anteriorly near sternum (over mainstem bronchi)',
+        clinicalNotes: 'Medium-pitched, medium-intensity sounds where inspiration equals expiration (I = E). Hearing bronchovesicular or bronchial sounds over peripheral lung bases is abnormal and indicates lung consolidation (e.g., lobar pneumonia).'
+      },
+      {
+        id: 'rml_lung_site',
+        name: 'Right Middle Lobe Auscultation',
+        category: 'respiratory',
+        catLabel: 'Respiratory Auscultation',
+        color: '#38bdf8',
+        pos: new THREE.Vector3(-0.115, 0.295, 0.115),
+        landmark: '4th–5th Right ICS between Midclavicular and Midaxillary Lines',
+        clinicalNotes: 'The Right Middle Lobe does not project to the posterior chest wall! It can ONLY be auscultated anteriorly and laterally on the right chest.'
+      },
+      {
+        id: 'left_lower_lung_site',
+        name: 'Vesicular Breath Sounds (Left Base)',
+        category: 'respiratory',
+        catLabel: 'Respiratory Auscultation',
+        color: '#38bdf8',
+        pos: new THREE.Vector3(0.128, 0.245, 0.105),
+        landmark: '6th Left ICS at Anterior/Midaxillary Line',
+        clinicalNotes: 'Soft, low-pitched rustling sounds over healthy peripheral alveoli where Inspiration is 3x longer than Expiration (I > E). Fine late-inspiratory crackles in the bases are often the earliest physical sign of Left-Sided Heart Failure / pulmonary edema.'
+      },
+      {
+        id: 'deltoid_im',
+        name: 'Deltoid IM Injection Site',
+        category: 'injection',
+        catLabel: 'IM Injection Landmark',
+        color: '#a855f7',
+        pos: new THREE.Vector3(0.245, 0.435, 0.015),
+        landmark: '2–3 fingerbreadths (3–5 cm) below the Acromion Process',
+        clinicalNotes: 'Insert needle at a 90° angle into the central triangle of the deltoid muscle. Maximum recommended volume in adults is 1 mL (up to 2 mL in well-developed muscle). Avoid injecting too low to prevent Radial/Axillary nerve damage.'
+      },
+      {
+        id: 'ventrogluteal_im',
+        name: 'Ventrogluteal IM Injection Site',
+        category: 'injection',
+        catLabel: 'Preferred Deep IM Site',
+        color: '#a855f7',
+        pos: new THREE.Vector3(-0.175, 0.025, 0.035),
+        landmark: 'Gluteus Medius/Minimus (Palm on Greater Trochanter, Index on ASIS, Middle finger along Iliac Crest)',
+        clinicalNotes: 'Gold-standard, safest site for large-volume (up to 3 mL), viscous, or irritating IM medications (e.g., Penicillin G, Haloperidol, Iron dextran using Z-track technique) in adults and children >7 months.'
+      },
+      {
+        id: 'vastus_lateralis_im',
+        name: 'Vastus Lateralis IM Injection Site',
+        category: 'injection',
+        catLabel: 'IM Injection / Infant & EpiPen',
+        color: '#a855f7',
+        pos: new THREE.Vector3(0.145, -0.220, 0.065),
+        landmark: 'Middle third of Anterolateral Thigh (between Greater Trochanter and Lateral Femoral Condyle)',
+        clinicalNotes: 'Site of choice for infants (<12 months) whose gluteal muscles are not yet developed from walking, and for emergency Epinephrine auto-injectors (EpiPen) in anaphylaxis.'
+      },
+      {
+        id: 'angle_of_louis',
+        name: 'Angle of Louis (Sternal Angle)',
+        category: 'abdominal',
+        catLabel: 'Anatomical Landmark',
+        color: '#fbbf24',
+        pos: new THREE.Vector3(0, 0.415, 0.148),
+        landmark: 'Manubriosternal Junction (Attachment of 2nd Costal Cartilage)',
+        clinicalNotes: 'Palpate the suprasternal notch and slide fingers down ~5 cm to feel the horizontal bony ridge. Directly marks the 2nd rib, tracheal bifurcation (Carina), and aortic arch origin.'
+      },
+      {
+        id: 'murphys_point',
+        name: "Murphy's Sign Palpation Site (RUQ)",
+        category: 'abdominal',
+        catLabel: 'Abdominal Assessment',
+        color: '#4ade80',
+        pos: new THREE.Vector3(-0.075, 0.175, 0.135),
+        landmark: 'Right Costal Margin at the Midclavicular Line (RUQ)',
+        clinicalNotes: 'Hook fingers under the right costal margin and ask the patient to take a deep breath. If the inflamed gallbladder descends onto the examining fingers and causes abrupt inspiratory arrest, Murphy sign is POSITIVE (Acute Cholecystitis).'
+      },
+      {
+        id: 'mcburneys_point',
+        name: "McBurney's Point (RLQ)",
+        category: 'abdominal',
+        catLabel: 'Abdominal Assessment',
+        color: '#4ade80',
+        pos: new THREE.Vector3(-0.082, 0.045, 0.138),
+        landmark: 'One-third of the distance from the Right ASIS to the Umbilicus (RLQ)',
+        clinicalNotes: 'Corresponds to the base of the vermiform appendix. Guarding and rebound tenderness (pain worse on quick release than on pressure) here strongly indicate Acute Appendicitis.'
+      }
+    ];
+
+    // ============================================================================
+    // 3. NURSING QUIZ BANK (3D LOCATE + CLINICAL NCLEX MCQs)
+    // ============================================================================
+    const QUIZ_LOCATE_QUESTIONS = [
+      {
+        prompt: 'Click the organ where bile is synthesized, clotting factors are produced, and ammonia is converted into urea.',
+        targetId: 'liver',
+        targetType: 'organ',
+        peelPreset: 65,
+        explanation: 'The Liver (in the Right Upper Quadrant) synthesizes albumin, clotting factors, and bile, and detoxifies ammonia.'
+      },
+      {
+        prompt: 'Click the Point of Maximal Impulse (PMI) / Mitral Auscultation pin where you must listen for 60 seconds before giving Digoxin.',
+        targetId: 'mitral_pmi',
+        targetType: 'pin',
+        peelPreset: 20,
+        explanation: 'The Mitral / Apical area is at the 5th Left Intercostal Space, Midclavicular Line (over the apex of the heart).'
+      },
+      {
+        prompt: "Click McBurney's Point in the Right Lower Quadrant (RLQ), assessed for rebound tenderness in suspected appendicitis.",
+        targetId: 'mcburneys_point',
+        targetType: 'pin',
+        peelPreset: 15,
+        explanation: "McBurney's Point lies 1/3 of the distance from the Right ASIS to the umbilicus over the appendix."
+      },
+      {
+        prompt: 'Click the primary muscle of inspiration innervated by the Phrenic Nerve (C3, C4, C5).',
+        targetId: 'diaphragm',
+        targetType: 'organ',
+        peelPreset: 40,
+        explanation: 'The Thoracic Diaphragm separates the thorax and abdomen and is innervated by C3–C5 ("C3, 4, 5 keeps the diaphragm alive").'
+      },
+      {
+        prompt: 'Click the Left Lung, which features only 2 lobes and the Cardiac Notch to accommodate the heart.',
+        targetId: 'left_lung',
+        targetType: 'organ',
+        peelPreset: 62,
+        explanation: 'Remember that anatomical Left is on the viewer’s right in anterior view! The Left Lung has 2 lobes and a cardiac notch.'
+      },
+      {
+        prompt: 'Click the Ventrogluteal IM Injection Site pin — the safest, evidence-based site for deep adult intramuscular injections.',
+        targetId: 'ventrogluteal_im',
+        targetType: 'pin',
+        peelPreset: 20,
+        explanation: 'The Ventrogluteal site (gluteus medius/minimus) avoids the sciatic nerve and superior gluteal artery.'
+      },
+      {
+        prompt: 'Click the Sternum (Manubrium, Angle of Louis & Body), compressed during CPR and used to count intercostal spaces.',
+        targetId: 'sternum',
+        targetType: 'organ',
+        peelPreset: 45,
+        explanation: 'The Sternum forms the anterior midline of the thoracic cage; its manubriosternal junction (Angle of Louis) marks the 2nd rib.'
+      },
+      {
+        prompt: 'Click the Stomach & Esophagus, where Parietal cells secrete Intrinsic Factor required for Vitamin B12 absorption.',
+        targetId: 'stomach',
+        targetType: 'organ',
+        peelPreset: 70,
+        explanation: 'The J-shaped Stomach sits in the Left Upper Quadrant (LUQ) beneath the left hemidiaphragm.'
+      }
+    ];
+
+    const QUIZ_MCQ_QUESTIONS = [
+      {
+        question: 'A nurse is preparing to perform a thoracentesis assist. Where should the needle be inserted relative to the rib to avoid damaging the intercostal neurovascular bundle?',
+        focusOrgan: 'rib_cage',
+        options: [
+          'Just ABOVE the superior border of the lower rib',
+          'Directly BELOW the inferior costal groove of the upper rib',
+          'Through the costal cartilage medial to the internal thoracic artery',
+          'At the level of the T12 floating rib posteriorly'
+        ],
+        correctIndex: 0,
+        explanation: 'The intercostal Vein, Artery, and Nerve (VAN) travel in the costal groove along the INFERIOR margin of each rib. Always insert needles/chest tubes just ABOVE the superior margin of the rib below.'
+      },
+      {
+        question: 'During a respiratory assessment, the nurse wishes to auscultate the Right Middle Lobe. Where must the stethoscope be placed?',
+        focusPin: 'rml_lung_site',
+        options: [
+          'Right anterior/lateral chest at the 4th–5th intercostal space between the midclavicular and midaxillary lines',
+          'Posteriorly between the spine and the medial border of the right scapula at T3',
+          '2nd Left Intercostal Space at the left sternal border',
+          'Posterior right base at the level of T10'
+        ],
+        correctIndex: 0,
+        explanation: 'The Right Middle Lobe is wedged anteriorly and laterally; it does not touch the posterior chest wall and can only be auscultated on the right anterior/lateral thorax.'
+      },
+      {
+        question: 'A client with a T4 spinal cord injury suddenly develops a severe throbbing headache, flushing above the nipple line, bradycardia, and BP of 210/112 mmHg. Which action should the nurse take FIRST?',
+        focusOrgan: 'spinal_cord_nerves',
+        options: [
+          'Elevate the head of the bed to 90 degrees (high Fowler position) and check for bladder distention',
+          'Place the client flat in Trendelenburg position to improve cerebral perfusion',
+          'Administer a rapid 1,000 mL bolus of 0.9% normal saline',
+          'Perform a lumbar puncture at the L1–L2 interspace'
+        ],
+        correctIndex: 0,
+        explanation: 'This is Autonomic Dysreflexia (occurs in injuries at T6 or higher). Immediately raise the head of the bed to 90° to induce orthostatic blood pressure reduction, loosen tight clothing, and check for a kinked Foley catheter or distended bladder.'
+      },
+      {
+        question: 'When auscultating heart sounds at the 2nd Right Intercostal Space at the right sternal border, which valve area is the nurse assessing?',
+        focusPin: 'aortic_area',
+        options: [
+          'Aortic valve area',
+          'Pulmonic valve area',
+          'Tricuspid valve area',
+          'Mitral (Apical) valve area'
+        ],
+        correctIndex: 0,
+        explanation: 'Remember the mnemonic APETM: Aortic (2nd R ICS), Pulmonic (2nd L ICS), Erb’s Point (3rd L ICS), Tricuspid (4th L ICS), Mitral (5th L ICS MCL).'
+      },
+      {
+        question: 'Which bone landmark is palpated to safely identify the L3–L4 or L4–L5 interspace for a lumbar puncture in an adult?',
+        focusOrgan: 'vertebral_column',
+        options: [
+          'Top of the Iliac Crests (Supracristal line at L4)',
+          'Xiphoid process of the sternum',
+          'Inferior angle of the scapula (T7)',
+          'Greater trochanter of the femur'
+        ],
+        correctIndex: 0,
+        explanation: 'The adult spinal cord ends at L1–L2. A line drawn across the highest points of the Iliac Crests intersects the L4 spinous process, marking the safe L3–L4 and L4–L5 spaces.'
+      }
+    ];
+
+    // ============================================================================
+    // 4. THREE.JS SCENE, CAMERA, RENDERER & LIGHTING SETUP
+    // ============================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.05, 50);
+    camera.position.set(0, 0.12, 2.55);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.localClippingEnabled = true;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0.05, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.minDistance = 0.42;
+    controls.maxDistance = 4.8;
+    controls.maxPolarAngle = Math.PI * 0.92;
+
+    // Studio & Medical Rim Lighting
+    const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.72);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.55);
+    keyLight.position.set(2.2, 3.0, 2.8);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.75);
+    fillLight.position.set(-2.5, 1.0, 1.8);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.85);
+    rimLight.position.set(0, 1.8, -2.6);
+    scene.add(rimLight);
+
+    const bottomFill = new THREE.DirectionalLight(0x475569, 0.4);
+    bottomFill.position.set(0, -2.5, 1.0);
+    scene.add(bottomFill);
+
+    // Subtle Anatomical Floor Platform & Scale Grid
+    const platformGroup = new THREE.Group();
+    const ringGeo = new THREE.RingGeometry(0.32, 0.34, 64);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.position.y = -0.86;
+    platformGroup.add(ringMesh);
+
+    const discGeo = new THREE.CircleGeometry(0.32, 64);
+    discGeo.rotateX(-Math.PI / 2);
+    const discMat = new THREE.MeshBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.55 });
+    const discMesh = new THREE.Mesh(discGeo, discMat);
+    discMesh.position.y = -0.862;
+    platformGroup.add(discMesh);
+    scene.add(platformGroup);
+
+    // Global Clipping Plane for Cross-Section Slicing
+    const globalClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 2.0);
+
+    // ============================================================================
+    // 5. PROCEDURAL TEXTURES & MATERIALS FOR REALISTIC TISSUE SHADING
+    // ============================================================================
+    function createProceduralTissueTexture(type) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      if (type === 'muscle') {
+        // Striated myofibril bands + subtle fascial sheen
+        ctx.fillStyle = '#9e2a2b';
+        ctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 256; i += 3) {
+          const shade = 135 + Math.sin(i * 0.35) * 22 + (Math.random() * 16 - 8);
+          ctx.fillStyle = `rgb(${shade}, ${Math.floor(shade * 0.28)}, ${Math.floor(shade * 0.28)})`;
+          ctx.fillRect(0, i, 256, 2);
+        }
+      } else if (type === 'bone') {
+        // Trabecular / periosteal subtle grain
+        ctx.fillStyle = '#ebe4d5';
+        ctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 900; i++) {
+          const v = 220 + Math.floor(Math.random() * 25);
+          ctx.fillStyle = `rgba(${v},${v - 8},${v - 20},0.25)`;
+          ctx.fillRect(Math.random() * 256, Math.random() * 256, 6, 3);
+        }
+      } else if (type === 'brain') {
+        // Gyri and sulci procedural pattern
+        ctx.fillStyle = '#eab8b2';
+        ctx.fillRect(0, 0, 256, 256);
+        ctx.strokeStyle = '#9e6b66';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 65; i++) {
+          ctx.beginPath();
+          const x = Math.random() * 256;
+          const y = Math.random() * 256;
+          ctx.arc(x, y, 10 + Math.random() * 14, 0, Math.PI * 1.3);
+          ctx.stroke();
+        }
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    const muscleTexture = createProceduralTissueTexture('muscle');
+    const boneTexture = createProceduralTissueTexture('bone');
+    const brainTexture = createProceduralTissueTexture('brain');
+
+    // Registry of all interactive organ groups & meshes
+    const systemGroups = {};
+    const organGroups = {}; // organId -> THREE.Group
+    const pickableMeshes = []; // Array of THREE.Mesh with userData.organId
+    const hiddenOrgans = new Set();
+    let anteriorRibMeshes = [];
+
+    const bodyRoot = new THREE.Group();
+    scene.add(bodyRoot);
+
+    SYSTEMS.forEach(sys => {
+      const g = new THREE.Group();
+      g.name = sys.id;
+      g.userData = { systemId: sys.id, basePos: new THREE.Vector3() };
+      bodyRoot.add(g);
+      systemGroups[sys.id] = g;
+    });
+
+    function registerOrganGroup(organId, systemId) {
+      const g = new THREE.Group();
+      g.name = organId;
+      g.userData = { organId, systemId };
+      systemGroups[systemId].add(g);
+      organGroups[organId] = g;
+      return g;
+    }
+
+    function createOrganMaterial(params) {
+      return new THREE.MeshStandardMaterial({
+        ...params,
+        clippingPlanes: [globalClipPlane],
+        clipShadows: true
+      });
+    }
+
+    function addMeshToOrgan(organGroup, geometry, material, transformFn) {
+      const mesh = new THREE.Mesh(geometry, material.clone());
+      mesh.userData = {
+        organId: organGroup.name,
+        systemId: organGroup.userData.systemId,
+        baseEmissive: mesh.material.emissive ? mesh.material.emissive.clone() : new THREE.Color(0x000000),
+        baseOpacity: mesh.material.opacity
+      };
+      if (transformFn) transformFn(mesh);
+      organGroup.add(mesh);
+      pickableMeshes.push(mesh);
+      return mesh;
+    }
+
+    // Helper: create capsule-like limb or muscle segment between two 3D points
+    function createLimbSegmentGeometry(p1, p2, rTop, rBottom, radialSegs = 16) {
+      const dir = new THREE.Vector3().subVectors(p2, p1);
+      const len = dir.length();
+      const geo = new THREE.CylinderGeometry(rTop, rBottom, len, radialSegs, 6, false);
+      // Slightly round the ends by scaling top/bottom rings
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const y = pos.getY(i);
+        const normY = y / (len * 0.5); // -1 to 1
+        const bulge = 1 + 0.08 * (1 - normY * normY);
+        pos.setX(i, pos.getX(i) * bulge);
+        pos.setZ(i, pos.getZ(i) * bulge);
+      }
+      geo.computeVertexNormals();
+      const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+      const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+      const mat4 = new THREE.Matrix4().compose(mid, quat, new THREE.Vector3(1, 1, 1));
+      geo.applyMatrix4(mat4);
+      return geo;
+    }
+
+    // Helper: Tube along 3D points
+    function createVesselTube(points, radius, tubularSegments = 32, radialSegments = 10) {
+      const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
+      return new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, false);
+    }
+
+    // ============================================================================
+    // 6. BUILD ALL 7 ANATOMICAL SYSTEMS (HIGH-PRECISION PROCEDURAL GEOMETRY)
+    // ============================================================================
+
+    function buildSkeletalSystem() {
+      const boneMat = createOrganMaterial({
+        color: 0xeee6d8,
+        map: boneTexture,
+        roughness: 0.48,
+        metalness: 0.05
+      });
+      const cartilageMat = createOrganMaterial({
+        color: 0xbfd4db,
+        roughness: 0.35,
+        metalness: 0.05
+      });
+
+      // 1. Cranium & Mandible
+      const skullGrp = registerOrganGroup('cranium_mandible', 'skeletal');
+      // Neurocranium
+      const craniumGeo = new THREE.SphereGeometry(0.095, 28, 24);
+      craniumGeo.scale(0.88, 1.06, 1.05);
+      addMeshToOrgan(skullGrp, craniumGeo, boneMat, m => m.position.set(0, 0.725, -0.008));
+      // Facial maxilla/zygoma block
+      const faceGeo = new THREE.CylinderGeometry(0.068, 0.056, 0.085, 20);
+      faceGeo.scale(0.95, 1, 0.88);
+      addMeshToOrgan(skullGrp, faceGeo, boneMat, m => m.position.set(0, 0.675, 0.032));
+      // Eye sockets (dark indentations)
+      const orbitMat = createOrganMaterial({ color: 0x1e293b, roughness: 0.8 });
+      [-0.028, 0.028].forEach(x => {
+        const orbGeo = new THREE.SphereGeometry(0.017, 14, 12);
+        orbGeo.scale(1.1, 0.85, 0.6);
+        addMeshToOrgan(skullGrp, orbGeo, orbitMat, m => m.position.set(x, 0.695, 0.078));
+      });
+      // Mandible (Jaw)
+      const jawCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-0.058, 0.665, 0.01),
+        new THREE.Vector3(-0.048, 0.618, 0.045),
+        new THREE.Vector3(0, 0.608, 0.075),
+        new THREE.Vector3(0.048, 0.618, 0.045),
+        new THREE.Vector3(0.058, 0.665, 0.01)
+      ]);
+      const jawGeo = new THREE.TubeGeometry(jawCurve, 24, 0.015, 10, false);
+      addMeshToOrgan(skullGrp, jawGeo, boneMat);
+
+      // 2. Vertebral Column (C1-C7, T1-T12, L1-L5, Sacrum)
+      const spineGrp = registerOrganGroup('vertebral_column', 'skeletal');
+      for (let i = 0; i < 24; i++) {
+        const t = i / 23; // 0 (C1 at y=0.59) to 1 (L5 at y=0.05)
+        const y = 0.59 - t * 0.53;
+        // S-curve: cervical lordosis, thoracic kyphosis, lumbar lordosis
+        const z = -0.045 + Math.sin(t * Math.PI * 2.5) * 0.018;
+        const radius = 0.017 + t * 0.014;
+        const vBody = new THREE.CylinderGeometry(radius, radius * 1.03, 0.016, 14);
+        addMeshToOrgan(spineGrp, vBody, boneMat, m => m.position.set(0, y, z));
+
+        // Spinous process pointing posteriorly
+        const spinous = new THREE.BoxGeometry(0.007, 0.012, 0.026);
+        addMeshToOrgan(spineGrp, spinous, boneMat, m => {
+          m.position.set(0, y - 0.003, z - 0.02);
+          m.rotation.x = 0.25;
+        });
+
+        // Transverse processes
+        const trans = new THREE.BoxGeometry(0.048 + t * 0.015, 0.008, 0.008);
+        addMeshToOrgan(spineGrp, trans, boneMat, m => m.position.set(0, y, z - 0.008));
+
+        // Intervertebral disc
+        if (i < 23) {
+          const disc = new THREE.CylinderGeometry(radius * 0.96, radius * 0.96, 0.006, 14);
+          addMeshToOrgan(spineGrp, disc, cartilageMat, m => m.position.set(0, y - 0.011, z));
+        }
+      }
+      // Sacrum & Coccyx
+      const sacrumGeo = new THREE.ConeGeometry(0.048, 0.095, 14);
+      sacrumGeo.scale(1.15, 1, 0.55);
+      addMeshToOrgan(spineGrp, sacrumGeo, boneMat, m => {
+        m.position.set(0, 0.005, -0.052);
+        m.rotation.x = Math.PI + 0.22;
+      });
+
+      // 3. Sternum (Manubrium, Angle of Louis, Body, Xiphoid)
+      const sternumGrp = registerOrganGroup('sternum', 'skeletal');
+      const manubriumGeo = new THREE.CylinderGeometry(0.032, 0.022, 0.055, 8);
+      manubriumGeo.scale(1.1, 1, 0.36);
+      const m1 = addMeshToOrgan(sternumGrp, manubriumGeo, boneMat, m => {
+        m.position.set(0, 0.442, 0.115);
+        m.rotation.x = -0.15;
+      });
+      // Angle of Louis ridge
+      const louisGeo = new THREE.BoxGeometry(0.042, 0.007, 0.016);
+      const m2 = addMeshToOrgan(sternumGrp, louisGeo, boneMat, m => m.position.set(0, 0.415, 0.122));
+      // Sternal Body
+      const sternalBodyGeo = new THREE.CylinderGeometry(0.021, 0.018, 0.115, 8);
+      sternalBodyGeo.scale(1.1, 1, 0.35);
+      const m3 = addMeshToOrgan(sternumGrp, sternalBodyGeo, boneMat, m => m.position.set(0, 0.355, 0.126));
+      // Xiphoid Process
+      const xiphoidGeo = new THREE.ConeGeometry(0.012, 0.028, 6);
+      xiphoidGeo.scale(1, 1, 0.35);
+      const m4 = addMeshToOrgan(sternumGrp, xiphoidGeo, cartilageMat, m => {
+        m.position.set(0, 0.285, 0.123);
+        m.rotation.x = Math.PI;
+      });
+      anteriorRibMeshes.push(m1, m2, m3, m4);
+
+      // 4. Thoracic Rib Cage (12 pairs of ribs + Costal Cartilages)
+      const ribGrp = registerOrganGroup('rib_cage', 'skeletal');
+      for (let r = 0; r < 12; r++) {
+        const yStart = 0.455 - r * 0.0235;
+        const widthFactor = Math.sin(((r + 1.5) / 13.5) * Math.PI);
+        const rx = 0.095 + widthFactor * 0.058;
+        const rzFront = 0.095 + widthFactor * 0.032;
+
+        [-1, 1].forEach(side => {
+          const pts = [];
+          const isFloating = r >= 10;
+          const isFalse = r >= 7 && r < 10;
+          const endAngle = isFloating ? Math.PI * 0.58 : Math.PI * 0.86;
+          const steps = 16;
+
+          for (let s = 0; s <= steps; s++) {
+            const u = s / steps;
+            const ang = u * endAngle;
+            const px = side * Math.sin(ang) * rx;
+            const pz = -0.048 * Math.cos(ang) + (1 - Math.cos(ang)) * 0.5 * rzFront - 0.02;
+            const py = yStart - u * 0.032 - Math.sin(u * Math.PI) * 0.008;
+            pts.push([px, py, pz]);
+          }
+
+          const ribGeo = createVesselTube(pts, 0.0068, 20, 8);
+          const ribMesh = addMeshToOrgan(ribGrp, ribGeo, boneMat);
+          if (r < 9) anteriorRibMeshes.push(ribMesh);
+
+          // Costal cartilage connecting ribs 1-10 to sternum/costal arch
+          if (!isFloating) {
+            const lastPt = pts[pts.length - 1];
+            const targetY = isFalse ? 0.295 : yStart - 0.030;
+            const targetZ = 0.122;
+            const cartPts = [
+              lastPt,
+              [side * 0.042, (lastPt[1] + targetY) * 0.5, (lastPt[2] + targetZ) * 0.5 + 0.008],
+              [side * 0.016, targetY, targetZ]
+            ];
+            const cartGeo = createVesselTube(cartPts, 0.006, 10, 8);
+            const cartMesh = addMeshToOrgan(ribGrp, cartGeo, cartilageMat);
+            anteriorRibMeshes.push(cartMesh);
+          }
+        });
+      }
+
+      // 5. Clavicles & Scapulae
+      const shoulderGrp = registerOrganGroup('clavicle_scapula', 'skeletal');
+      [-1, 1].forEach(side => {
+        const clavPts = [
+          [side * 0.02, 0.468, 0.112],
+          [side * 0.09, 0.478, 0.095],
+          [side * 0.16, 0.468, 0.045],
+          [side * 0.215, 0.472, 0.015]
+        ];
+        addMeshToOrgan(shoulderGrp, createVesselTube(clavPts, 0.0095, 18, 8), boneMat);
+
+        // Scapula blade posteriorly
+        const scapGeo = new THREE.ConeGeometry(0.065, 0.135, 4);
+        scapGeo.scale(0.85, 1, 0.22);
+        addMeshToOrgan(shoulderGrp, scapGeo, boneMat, m => {
+          m.position.set(side * 0.125, 0.395, -0.075);
+          m.rotation.z = side * 0.18;
+          m.rotation.x = Math.PI;
+        });
+      });
+
+      // 6. Pelvic Girdle (Ilium, Ischium, Pubis, ASIS)
+      const pelvisGrp = registerOrganGroup('pelvic_girdle', 'skeletal');
+      [-1, 1].forEach(side => {
+        // Iliac wing
+        const iliumGeo = new THREE.SphereGeometry(0.082, 18, 14);
+        iliumGeo.scale(0.65, 1.05, 0.72);
+        addMeshToOrgan(pelvisGrp, iliumGeo, boneMat, m => {
+          m.position.set(side * 0.098, 0.035, -0.005);
+          m.rotation.z = side * -0.35;
+          m.rotation.y = side * 0.4;
+        });
+
+        // Iliac crest rim & ASIS
+        const crestPts = [
+          [side * 0.045, 0.055, -0.055],
+          [side * 0.125, 0.082, -0.015],
+          [side * 0.142, 0.068, 0.045],
+          [side * 0.118, 0.028, 0.082] // ASIS
+        ];
+        addMeshToOrgan(pelvisGrp, createVesselTube(crestPts, 0.013, 16, 8), boneMat);
+
+        // Pubic & Ischial rami loop
+        const pubisPts = [
+          [side * 0.105, -0.015, 0.025],
+          [side * 0.085, -0.068, -0.015],
+          [side * 0.045, -0.055, 0.055],
+          [side * 0.012, -0.038, 0.072]
+        ];
+        addMeshToOrgan(pelvisGrp, createVesselTube(pubisPts, 0.012, 16, 8), boneMat);
+      });
+      // Pubic symphysis disc
+      const symphGeo = new THREE.BoxGeometry(0.022, 0.032, 0.022);
+      addMeshToOrgan(pelvisGrp, symphGeo, cartilageMat, m => m.position.set(0, -0.038, 0.072));
+
+      // 7. Upper Limb Bones (Humerus, Radius, Ulna, Hand)
+      const armBonesGrp = registerOrganGroup('upper_limb_bones', 'skeletal');
+      [-1, 1].forEach(side => {
+        const shoulderPt = new THREE.Vector3(side * 0.225, 0.445, 0.0);
+        const elbowPt = new THREE.Vector3(side * 0.265, 0.175, -0.01);
+        const wristPt = new THREE.Vector3(side * 0.305, -0.055, 0.025);
+
+        // Humeral head
+        const hHead = new THREE.SphereGeometry(0.026, 14, 12);
+        addMeshToOrgan(armBonesGrp, hHead, boneMat, m => m.position.copy(shoulderPt));
+        // Humerus shaft
+        addMeshToOrgan(armBonesGrp, createLimbSegmentGeometry(shoulderPt, elbowPt, 0.016, 0.019), boneMat);
+
+        // Radius (lateral) & Ulna (medial)
+        const radStart = elbowPt.clone().add(new THREE.Vector3(side * 0.01, 0, 0.005));
+        const radEnd = wristPt.clone().add(new THREE.Vector3(side * 0.012, 0, 0.005));
+        const ulnStart = elbowPt.clone().add(new THREE.Vector3(side * -0.01, 0, -0.005));
+        const ulnEnd = wristPt.clone().add(new THREE.Vector3(side * -0.012, 0, -0.005));
+        addMeshToOrgan(armBonesGrp, createLimbSegmentGeometry(radStart, radEnd, 0.009, 0.012), boneMat);
+        addMeshToOrgan(armBonesGrp, createLimbSegmentGeometry(ulnStart, ulnEnd, 0.012, 0.008), boneMat);
+
+        // Hand / Metacarpals
+        const handGeo = new THREE.BoxGeometry(0.035, 0.075, 0.014);
+        addMeshToOrgan(armBonesGrp, handGeo, boneMat, m => {
+          m.position.set(side * 0.312, -0.105, 0.032);
+          m.rotation.z = side * 0.1;
+        });
+      });
+
+      // 8. Lower Limb Bones (Femur, Patella, Tibia, Fibula, Foot)
+      const legBonesGrp = registerOrganGroup('lower_limb_bones', 'skeletal');
+      [-1, 1].forEach(side => {
+        const acetabulumPt = new THREE.Vector3(side * 0.105, -0.025, 0.0);
+        const trochanterPt = new THREE.Vector3(side * 0.145, -0.045, 0.0);
+        const kneePt = new THREE.Vector3(side * 0.095, -0.435, 0.005);
+        const anklePt = new THREE.Vector3(side * 0.092, -0.805, -0.005);
+
+        // Femoral head & neck
+        const fHead = new THREE.SphereGeometry(0.025, 14, 12);
+        addMeshToOrgan(legBonesGrp, fHead, boneMat, m => m.position.copy(acetabulumPt));
+        addMeshToOrgan(legBonesGrp, createLimbSegmentGeometry(acetabulumPt, trochanterPt, 0.016, 0.021), boneMat);
+        // Femur shaft
+        addMeshToOrgan(legBonesGrp, createLimbSegmentGeometry(trochanterPt, kneePt, 0.024, 0.028), boneMat);
+
+        // Patella
+        const patellaGeo = new THREE.SphereGeometry(0.019, 12, 10);
+        patellaGeo.scale(1, 1.15, 0.55);
+        addMeshToOrgan(legBonesGrp, patellaGeo, boneMat, m => m.position.set(side * 0.095, -0.425, 0.038));
+
+        // Tibia (medial weight-bearing) & Fibula (lateral slender)
+        const tibStart = kneePt.clone().add(new THREE.Vector3(side * -0.006, -0.01, 0));
+        const tibEnd = anklePt.clone().add(new THREE.Vector3(side * -0.006, 0, 0));
+        const fibStart = kneePt.clone().add(new THREE.Vector3(side * 0.018, -0.02, -0.008));
+        const fibEnd = anklePt.clone().add(new THREE.Vector3(side * 0.016, 0, -0.008));
+        addMeshToOrgan(legBonesGrp, createLimbSegmentGeometry(tibStart, tibEnd, 0.023, 0.016), boneMat);
+        addMeshToOrgan(legBonesGrp, createLimbSegmentGeometry(fibStart, fibEnd, 0.009, 0.008), boneMat);
+
+        // Foot tarsals/metatarsals
+        const footGeo = new THREE.BoxGeometry(0.048, 0.026, 0.115);
+        addMeshToOrgan(legBonesGrp, footGeo, boneMat, m => m.position.set(side * 0.095, -0.835, 0.032));
+      });
+    }
+
+    function buildCardiovascularSystem() {
+      const heartMat = createOrganMaterial({
+        color: 0xb91c1c,
+        roughness: 0.32,
+        metalness: 0.08
+      });
+      const arteryMat = createOrganMaterial({
+        color: 0xef4444,
+        roughness: 0.35,
+        metalness: 0.1
+      });
+      const veinMat = createOrganMaterial({
+        color: 0x2563eb,
+        roughness: 0.38,
+        metalness: 0.1
+      });
+
+      // 1. Heart (Chambers & Coronary Vessels)
+      const heartGrp = registerOrganGroup('heart', 'cardiovascular');
+      // Left & Right Ventricles (tilted toward left 5th ICS MCL)
+      const lvGeo = new THREE.ConeGeometry(0.044, 0.095, 22);
+      lvGeo.scale(1.05, 1, 0.88);
+      addMeshToOrgan(heartGrp, lvGeo, heartMat, m => {
+        m.position.set(0.028, 0.325, 0.052);
+        m.rotation.z = 0.48;
+        m.rotation.x = 0.25;
+        m.rotation.y = -0.2;
+      });
+      // Right Atrium & Left Atrium superiorly
+      const raGeo = new THREE.SphereGeometry(0.031, 18, 16);
+      addMeshToOrgan(heartGrp, raGeo, createOrganMaterial({ color: 0x7f1d1d, roughness: 0.35 }), m => {
+        m.position.set(-0.012, 0.358, 0.045);
+      });
+      const laGeo = new THREE.SphereGeometry(0.028, 18, 16);
+      addMeshToOrgan(heartGrp, laGeo, heartMat, m => {
+        m.position.set(0.035, 0.368, 0.025);
+      });
+      // Left Anterior Descending (LAD) & Right Coronary Artery (RCA) on epicardial surface
+      const ladPts = [
+        [0.018, 0.365, 0.072],
+        [0.028, 0.335, 0.085],
+        [0.045, 0.295, 0.078]
+      ];
+      addMeshToOrgan(heartGrp, createVesselTube(ladPts, 0.0032, 14, 6), arteryMat);
+
+      // 2. Systemic Arterial Tree (Aorta, Carotids, Subclavians, Brachial, Iliac, Femoral)
+      const artGrp = registerOrganGroup('arterial_tree', 'cardiovascular');
+      // Aortic Arch & Descending Thoracic/Abdominal Aorta
+      const aortaPts = [
+        [0.012, 0.368, 0.048],
+        [0.002, 0.425, 0.042],
+        [0.015, 0.438, 0.005],
+        [0.012, 0.385, -0.022],
+        [0.006, 0.245, -0.022],
+        [0.003, 0.075, -0.018] // Aortic bifurcation at L4
+      ];
+      addMeshToOrgan(artGrp, createVesselTube(aortaPts, 0.0135, 36, 12), arteryMat);
+
+      // Carotid Arteries (Left & Right)
+      [-1, 1].forEach(side => {
+        const carotidPts = [
+          [side * 0.012, 0.432, 0.025],
+          [side * 0.026, 0.525, 0.018],
+          [side * 0.028, 0.625, 0.012]
+        ];
+        addMeshToOrgan(artGrp, createVesselTube(carotidPts, 0.0055, 16, 8), arteryMat);
+
+        // Subclavian -> Axillary -> Brachial -> Radial Artery
+        const armArtPts = [
+          [side * 0.015, 0.432, 0.02],
+          [side * 0.115, 0.455, 0.012],
+          [side * 0.215, 0.425, 0.008],
+          [side * 0.255, 0.185, 0.005],
+          [side * 0.298, -0.045, 0.032]
+        ];
+        addMeshToOrgan(artGrp, createVesselTube(armArtPts, 0.0052, 24, 8), arteryMat);
+
+        // Common Iliac -> External Iliac -> Femoral -> Popliteal -> Tibial Artery
+        const legArtPts = [
+          [0.003, 0.075, -0.018],
+          [side * 0.055, 0.015, 0.005],
+          [side * 0.095, -0.055, 0.022],
+          [side * 0.092, -0.255, 0.015],
+          [side * 0.092, -0.435, -0.008],
+          [side * 0.090, -0.785, 0.005]
+        ];
+        addMeshToOrgan(artGrp, createVesselTube(legArtPts, 0.0072, 28, 8), arteryMat);
+      });
+
+      // Renal & Mesenteric branches
+      [-1, 1].forEach(side => {
+        const renalPts = [[0.005, 0.165, -0.018], [side * 0.058, 0.162, -0.025]];
+        addMeshToOrgan(artGrp, createVesselTube(renalPts, 0.0045, 8, 6), arteryMat);
+      });
+
+      // 3. Systemic Venous Tree (SVC, IVC, Internal Jugular, Subclavian, Iliac, Femoral)
+      const veinGrp = registerOrganGroup('venous_tree', 'cardiovascular');
+      // Superior Vena Cava (SVC)
+      const svcPts = [
+        [-0.026, 0.455, 0.032],
+        [-0.024, 0.375, 0.042]
+      ];
+      addMeshToOrgan(veinGrp, createVesselTube(svcPts, 0.012, 12, 10), veinMat);
+
+      // Inferior Vena Cava (IVC)
+      const ivcPts = [
+        [-0.018, 0.065, -0.012],
+        [-0.022, 0.215, 0.002],
+        [-0.018, 0.335, 0.032]
+      ];
+      addMeshToOrgan(veinGrp, createVesselTube(ivcPts, 0.013, 20, 10), veinMat);
+
+      // Pulmonary Trunk
+      const pulmPts = [
+        [0.008, 0.365, 0.062],
+        [0.015, 0.402, 0.038],
+        [-0.045, 0.398, 0.022]
+      ];
+      addMeshToOrgan(veinGrp, createVesselTube(pulmPts, 0.0095, 14, 8), veinMat);
+
+      [-1, 1].forEach(side => {
+        // Internal Jugular Vein
+        const ijvPts = [
+          [-0.026, 0.448, 0.032],
+          [side * 0.035, 0.495, 0.024],
+          [side * 0.036, 0.620, 0.016]
+        ];
+        addMeshToOrgan(veinGrp, createVesselTube(ijvPts, 0.006, 16, 8), veinMat);
+
+        // Iliac & Femoral Veins
+        const legVeinPts = [
+          [-0.018, 0.065, -0.012],
+          [side * 0.048, 0.005, 0.008],
+          [side * 0.082, -0.065, 0.024],
+          [side * 0.082, -0.435, -0.004],
+          [side * 0.082, -0.775, 0.008]
+        ];
+        addMeshToOrgan(veinGrp, createVesselTube(legVeinPts, 0.0068, 24, 8), veinMat);
+      });
+    }
+
+    function buildRespiratorySystem() {
+      const cartilageAirwayMat = createOrganMaterial({
+        color: 0x93c5fd,
+        roughness: 0.35,
+        metalness: 0.05
+      });
+      const lungMat = createOrganMaterial({
+        color: 0xf48fb1,
+        roughness: 0.48,
+        metalness: 0.04
+      });
+
+      // 1. Larynx, Trachea & Primary Bronchi
+      const airwayGrp = registerOrganGroup('trachea_bronchi', 'respiratory');
+      // Thyroid cartilage (Adam's apple) & Cricoid
+      const larynxGeo = new THREE.CylinderGeometry(0.016, 0.013, 0.032, 12);
+      addMeshToOrgan(airwayGrp, larynxGeo, cartilageAirwayMat, m => m.position.set(0, 0.548, 0.032));
+
+      // Trachea tube with cartilaginous C-rings
+      const tracheaGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.115, 16);
+      addMeshToOrgan(airwayGrp, tracheaGeo, createOrganMaterial({ color: 0xfca5a5, roughness: 0.45 }), m => m.position.set(0, 0.475, 0.022));
+      for (let i = 0; i < 11; i++) {
+        const ringGeo = new THREE.TorusGeometry(0.0125, 0.0022, 8, 16, Math.PI * 1.6);
+        ringGeo.rotateX(Math.PI / 2);
+        ringGeo.rotateY(-Math.PI * 0.3);
+        addMeshToOrgan(airwayGrp, ringGeo, cartilageAirwayMat, m => m.position.set(0, 0.525 - i * 0.0095, 0.022));
+      }
+
+      // Carina & Right/Left Mainstem Bronchi (Right more vertical and wider!)
+      const rBronchusPts = [[0, 0.418, 0.018], [-0.035, 0.395, 0.015], [-0.068, 0.365, 0.012]];
+      const lBronchusPts = [[0, 0.418, 0.018], [0.042, 0.402, 0.015], [0.075, 0.382, 0.012]];
+      addMeshToOrgan(airwayGrp, createVesselTube(rBronchusPts, 0.0095, 12, 8), cartilageAirwayMat);
+      addMeshToOrgan(airwayGrp, createVesselTube(lBronchusPts, 0.0080, 12, 8), cartilageAirwayMat);
+
+      // 2. Right Lung (3 Lobes: Superior, Middle, Inferior)
+      const rLungGrp = registerOrganGroup('right_lung', 'respiratory');
+      // Superior lobe
+      const rSupGeo = new THREE.SphereGeometry(0.056, 22, 18);
+      rSupGeo.scale(0.88, 1.15, 1.05);
+      addMeshToOrgan(rLungGrp, rSupGeo, lungMat, m => m.position.set(-0.075, 0.405, 0.018));
+      // Middle lobe (anterior-lateral wedge)
+      const rMidGeo = new THREE.SphereGeometry(0.052, 20, 16);
+      rMidGeo.scale(0.92, 0.72, 1.05);
+      addMeshToOrgan(rLungGrp, rMidGeo, createOrganMaterial({ color: 0xf06292, roughness: 0.48 }), m => m.position.set(-0.082, 0.335, 0.035));
+      // Inferior lobe
+      const rInfGeo = new THREE.SphereGeometry(0.062, 22, 18);
+      rInfGeo.scale(0.95, 1.05, 1.12);
+      addMeshToOrgan(rLungGrp, rInfGeo, lungMat, m => m.position.set(-0.085, 0.305, -0.008));
+
+      // 3. Left Lung (2 Lobes + Cardiac Notch)
+      const lLungGrp = registerOrganGroup('left_lung', 'respiratory');
+      const lSupGeo = new THREE.SphereGeometry(0.054, 22, 18);
+      lSupGeo.scale(0.84, 1.18, 1.02);
+      addMeshToOrgan(lLungGrp, lSupGeo, lungMat, m => m.position.set(0.082, 0.402, 0.015));
+      const lInfGeo = new THREE.SphereGeometry(0.060, 22, 18);
+      lInfGeo.scale(0.90, 1.12, 1.10);
+      addMeshToOrgan(lLungGrp, lInfGeo, createOrganMaterial({ color: 0xf06292, roughness: 0.48 }), m => m.position.set(0.088, 0.308, -0.005));
+    }
+
+    function buildDigestiveSystem() {
+      // 1. Liver (RUQ + Epigastrium)
+      const liverGrp = registerOrganGroup('liver', 'digestive');
+      const liverMat = createOrganMaterial({ color: 0x7c2d12, roughness: 0.32, metalness: 0.08 });
+      // Right lobe (large dome under right diaphragm)
+      const rLiverGeo = new THREE.SphereGeometry(0.068, 24, 18);
+      rLiverGeo.scale(1.15, 0.82, 1.05);
+      addMeshToOrgan(liverGrp, rLiverGeo, liverMat, m => {
+        m.position.set(-0.055, 0.215, 0.038);
+        m.rotation.z = 0.25;
+      });
+      // Left lobe tapering across midline
+      const lLiverGeo = new THREE.ConeGeometry(0.048, 0.095, 18);
+      lLiverGeo.scale(1, 1, 0.65);
+      addMeshToOrgan(liverGrp, lLiverGeo, liverMat, m => {
+        m.position.set(0.015, 0.228, 0.055);
+        m.rotation.z = -Math.PI * 0.42;
+      });
+
+      // 2. Gallbladder (green pear sac under right liver lobe)
+      const gbGrp = registerOrganGroup('gallbladder', 'digestive');
+      const gbMat = createOrganMaterial({ color: 0x15803d, roughness: 0.28, metalness: 0.1 });
+      const gbGeo = new THREE.SphereGeometry(0.018, 16, 14);
+      gbGeo.scale(0.85, 1.45, 0.85);
+      addMeshToOrgan(gbGrp, gbGeo, gbMat, m => {
+        m.position.set(-0.048, 0.172, 0.072);
+        m.rotation.z = -0.35;
+        m.rotation.x = 0.4;
+      });
+
+      // 3. Stomach & Esophagus (LUQ)
+      const stomachGrp = registerOrganGroup('stomach', 'digestive');
+      const stomachMat = createOrganMaterial({ color: 0xfb923c, roughness: 0.42, metalness: 0.05 });
+      // Esophagus descending behind trachea
+      const esophPts = [
+        [0, 0.535, 0.006],
+        [0.005, 0.385, 0.002],
+        [0.022, 0.255, 0.025]
+      ];
+      addMeshToOrgan(stomachGrp, createVesselTube(esophPts, 0.0085, 20, 8), stomachMat);
+      // J-shaped Stomach curve
+      const stomPts = [
+        [0.032, 0.238, 0.028], // Fundus
+        [0.058, 0.205, 0.045], // Greater curvature body
+        [0.038, 0.165, 0.058], // Antrum
+        [0.002, 0.178, 0.042]  // Pylorus
+      ];
+      addMeshToOrgan(stomachGrp, createVesselTube(stomPts, 0.032, 22, 14), stomachMat);
+
+      // 4. Pancreas & Spleen
+      const pancGrp = registerOrganGroup('pancreas_spleen', 'digestive');
+      const pancMat = createOrganMaterial({ color: 0xfde047, roughness: 0.55 });
+      const pancPts = [
+        [-0.015, 0.155, 0.018], // Head in duodenal loop
+        [0.025, 0.168, 0.012],  // Body
+        [0.072, 0.182, -0.005]  // Tail reaching spleen
+      ];
+      addMeshToOrgan(pancGrp, createVesselTube(pancPts, 0.016, 16, 10), pancMat);
+      // Spleen (posterolateral LUQ)
+      const spleenMat = createOrganMaterial({ color: 0x6b21a8, roughness: 0.38 });
+      const spleenGeo = new THREE.SphereGeometry(0.034, 18, 14);
+      spleenGeo.scale(0.65, 1.25, 0.95);
+      addMeshToOrgan(pancGrp, spleenGeo, spleenMat, m => {
+        m.position.set(0.098, 0.198, -0.012);
+        m.rotation.z = -0.25;
+      });
+
+      // 5. Small Intestine (Duodenum, Jejunum, Ileum coils)
+      const siGrp = registerOrganGroup('small_intestine', 'digestive');
+      const siMat = createOrganMaterial({ color: 0xfdba74, roughness: 0.45 });
+      const siPts = [
+        [0.002, 0.175, 0.038],
+        [-0.028, 0.165, 0.025],
+        [-0.025, 0.135, 0.028],
+        [0.038, 0.132, 0.052],
+        [-0.038, 0.108, 0.058],
+        [0.042, 0.088, 0.062],
+        [-0.035, 0.068, 0.058],
+        [0.035, 0.048, 0.055],
+        [-0.025, 0.028, 0.048],
+        [-0.058, 0.038, 0.042] // Ileocecal junction in RLQ
+      ];
+      addMeshToOrgan(siGrp, createVesselTube(siPts, 0.0155, 64, 10), siMat);
+
+      // 6. Large Intestine (Cecum, Appendix, Ascending, Transverse, Descending, Sigmoid, Rectum)
+      const colonGrp = registerOrganGroup('large_intestine', 'digestive');
+      const colonMat = createOrganMaterial({ color: 0xd97706, roughness: 0.48 });
+      const colonPts = [
+        [-0.068, 0.025, 0.042], // Cecum (RLQ)
+        [-0.072, 0.085, 0.038], // Ascending colon
+        [-0.068, 0.148, 0.042], // Hepatic flexure
+        [-0.025, 0.142, 0.068], // Transverse colon
+        [0.028, 0.145, 0.068],
+        [0.072, 0.158, 0.038],  // Splenic flexure
+        [0.074, 0.082, 0.032],  // Descending colon
+        [0.068, 0.018, 0.035],  // Sigmoid colon (LLQ)
+        [0.025, -0.005, 0.015],
+        [0, -0.048, -0.015]     // Rectum
+      ];
+      addMeshToOrgan(colonGrp, createVesselTube(colonPts, 0.021, 52, 12), colonMat);
+
+      // Vermiform Appendix hanging off Cecum in RLQ (McBurney's point)
+      const appPts = [
+        [-0.068, 0.022, 0.042],
+        [-0.078, 0.002, 0.048],
+        [-0.062, -0.012, 0.045]
+      ];
+      addMeshToOrgan(colonGrp, createVesselTube(appPts, 0.0055, 10, 8), colonMat);
+    }
+
+    function buildNervousSystem() {
+      const brainMat = createOrganMaterial({
+        color: 0xfbcfe8,
+        map: brainTexture,
+        roughness: 0.42
+      });
+      const nerveMat = createOrganMaterial({
+        color: 0xfacc15,
+        emissive: 0x713f12,
+        emissiveIntensity: 0.25,
+        roughness: 0.35
+      });
+
+      // 1. Brain (Cerebral Hemispheres, Cerebellum, Brainstem)
+      const brainGrp = registerOrganGroup('brain', 'nervous');
+      [-1, 1].forEach(side => {
+        const hemiGeo = new THREE.SphereGeometry(0.056, 22, 18);
+        hemiGeo.scale(0.76, 1.05, 1.32);
+        addMeshToOrgan(brainGrp, hemiGeo, brainMat, m => m.position.set(side * 0.036, 0.742, -0.008));
+
+        // Cerebellar hemispheres posteriorly
+        const cbGeo = new THREE.SphereGeometry(0.030, 16, 14);
+        cbGeo.scale(0.95, 0.75, 0.85);
+        addMeshToOrgan(brainGrp, cbGeo, createOrganMaterial({ color: 0xf9a8d4, roughness: 0.48 }), m => m.position.set(side * 0.028, 0.675, -0.052));
+      });
+      // Pons & Medulla Brainstem
+      const stemGeo = new THREE.CylinderGeometry(0.016, 0.011, 0.065, 14);
+      addMeshToOrgan(brainGrp, stemGeo, nerveMat, m => {
+        m.position.set(0, 0.652, -0.022);
+        m.rotation.x = 0.22;
+      });
+
+      // 2. Spinal Cord, Brachial Plexus, Phrenic/Vagus & Sciatic Nerves
+      const cordGrp = registerOrganGroup('spinal_cord_nerves', 'nervous');
+      // Spinal cord down to L1/L2 conus medullaris
+      const cordPts = [
+        [0, 0.625, -0.032],
+        [0, 0.485, -0.038],
+        [0, 0.325, -0.052],
+        [0, 0.145, -0.038] // Conus medullaris at L1/L2
+      ];
+      addMeshToOrgan(cordGrp, createVesselTube(cordPts, 0.0075, 28, 8), nerveMat);
+
+      [-1, 1].forEach(side => {
+        // Brachial Plexus -> Median/Radial/Ulnar nerves down arm
+        const brachialPts = [
+          [0, 0.515, -0.036],
+          [side * 0.095, 0.468, -0.005],
+          [side * 0.215, 0.425, -0.005],
+          [side * 0.258, 0.175, -0.008],
+          [side * 0.298, -0.048, 0.022]
+        ];
+        addMeshToOrgan(cordGrp, createVesselTube(brachialPts, 0.0042, 24, 6), nerveMat);
+
+        // Phrenic & Vagus nerve pathway in neck/mediastinum
+        const vagusPts = [
+          [side * 0.018, 0.635, -0.012],
+          [side * 0.028, 0.515, 0.012],
+          [side * 0.032, 0.365, 0.022],
+          [side * 0.042, 0.265, 0.025]
+        ];
+        addMeshToOrgan(cordGrp, createVesselTube(vagusPts, 0.0028, 18, 6), nerveMat);
+
+        // Sciatic Nerve (L4-S3) descending posteriorly through gluteal region and thigh
+        const sciaticPts = [
+          [0, 0.125, -0.038],
+          [side * 0.055, 0.025, -0.042],
+          [side * 0.098, -0.065, -0.032],
+          [side * 0.095, -0.265, -0.018],
+          [side * 0.092, -0.435, -0.018],
+          [side * 0.090, -0.765, -0.012]
+        ];
+        addMeshToOrgan(cordGrp, createVesselTube(sciaticPts, 0.0055, 28, 8), nerveMat);
+
+        // Femoral Nerve anteriorly
+        const femNervePts = [
+          [0, 0.145, -0.036],
+          [side * 0.065, 0.035, 0.005],
+          [side * 0.105, -0.065, 0.028],
+          [side * 0.102, -0.285, 0.032]
+        ];
+        addMeshToOrgan(cordGrp, createVesselTube(femNervePts, 0.0038, 18, 6), nerveMat);
+      });
+    }
+
+    function buildMuscularSystem() {
+      const muscleMat = createOrganMaterial({
+        color: 0xc84b4b,
+        map: muscleTexture,
+        roughness: 0.46,
+        metalness: 0.06
+      });
+      const tendonMat = createOrganMaterial({
+        color: 0xe2d9c8,
+        roughness: 0.40
+      });
+
+      // 1. Sternocleidomastoid & Trapezius
+      const scmGrp = registerOrganGroup('sternocleidomastoid', 'muscular');
+      [-1, 1].forEach(side => {
+        const scmPts = [
+          [side * 0.018, 0.465, 0.108],
+          [side * 0.042, 0.545, 0.048],
+          [side * 0.058, 0.642, -0.015]
+        ];
+        addMeshToOrgan(scmGrp, createVesselTube(scmPts, 0.014, 14, 10), muscleMat);
+
+        // Trapezius upper shoulder sweep
+        const trapGeo = new THREE.ConeGeometry(0.065, 0.165, 12);
+        trapGeo.scale(0.85, 1, 0.42);
+        addMeshToOrgan(scmGrp, trapGeo, muscleMat, m => {
+          m.position.set(side * 0.095, 0.515, -0.038);
+          m.rotation.z = side * 0.72;
+        });
+      });
+
+      // 2. Pectoralis Major (Left & Right)
+      const pecGrp = registerOrganGroup('pectoralis_major', 'muscular');
+      [-1, 1].forEach(side => {
+        const pecGeo = new THREE.SphereGeometry(0.082, 22, 18);
+        pecGeo.scale(1.18, 0.86, 0.42);
+        addMeshToOrgan(pecGrp, pecGeo, muscleMat, m => {
+          m.position.set(side * 0.082, 0.392, 0.125);
+          m.rotation.y = side * 0.28;
+          m.rotation.z = side * -0.12;
+        });
+      });
+
+      // 3. Deltoid (Left & Right — IM Injection target)
+      const deltGrp = registerOrganGroup('deltoid', 'muscular');
+      [-1, 1].forEach(side => {
+        const deltGeo = new THREE.SphereGeometry(0.056, 20, 16);
+        deltGeo.scale(0.85, 1.35, 0.92);
+        addMeshToOrgan(deltGrp, deltGeo, muscleMat, m => {
+          m.position.set(side * 0.228, 0.425, 0.002);
+          m.rotation.z = side * -0.18;
+        });
+      });
+
+      // 4. Thoracic Diaphragm (Dome between thorax & abdomen)
+      const diaphGrp = registerOrganGroup('diaphragm', 'muscular');
+      const diaphGeo = new THREE.SphereGeometry(0.132, 26, 16, 0, Math.PI * 2, 0, Math.PI * 0.48);
+      diaphGeo.scale(1.06, 0.48, 0.82);
+      addMeshToOrgan(diaphGrp, diaphGeo, createOrganMaterial({ color: 0xb93838, roughness: 0.45, side: THREE.DoubleSide }), m => {
+        m.position.set(0, 0.235, 0.008);
+      });
+
+      // 5. Rectus Abdominis (6-pack segments) & External Obliques / Latissimus
+      const absGrp = registerOrganGroup('rectus_abdominis', 'muscular');
+      [-1, 1].forEach(side => {
+        for (let row = 0; row < 4; row++) {
+          const segGeo = new THREE.SphereGeometry(0.034, 14, 12);
+          segGeo.scale(1.05, 0.88, 0.38);
+          addMeshToOrgan(absGrp, segGeo, muscleMat, m => {
+            m.position.set(side * 0.034, 0.225 - row * 0.055, 0.122 - row * 0.004);
+          });
+        }
+        // External Oblique flank
+        const obGeo = new THREE.CylinderGeometry(0.048, 0.044, 0.21, 14);
+        obGeo.scale(0.65, 1, 1.35);
+        addMeshToOrgan(absGrp, obGeo, muscleMat, m => {
+          m.position.set(side * 0.105, 0.145, 0.045);
+          m.rotation.z = side * 0.08;
+        });
+        // Latissimus Dorsi posterior back
+        const latGeo = new THREE.SphereGeometry(0.095, 18, 16);
+        latGeo.scale(0.95, 1.45, 0.32);
+        addMeshToOrgan(absGrp, latGeo, muscleMat, m => {
+          m.position.set(side * 0.078, 0.285, -0.072);
+          m.rotation.y = side * -0.22;
+        });
+      });
+      // Linea alba central tendon strip
+      const lineaGeo = new THREE.BoxGeometry(0.008, 0.24, 0.012);
+      addMeshToOrgan(absGrp, lineaGeo, tendonMat, m => m.position.set(0, 0.14, 0.125));
+
+      // 6. Biceps Brachii, Triceps & Forearm Flexors
+      const armMuscGrp = registerOrganGroup('biceps_triceps', 'muscular');
+      [-1, 1].forEach(side => {
+        // Biceps anterior belly
+        const bicGeo = new THREE.SphereGeometry(0.036, 16, 14);
+        bicGeo.scale(0.85, 2.5, 0.85);
+        addMeshToOrgan(armMuscGrp, bicGeo, muscleMat, m => {
+          m.position.set(side * 0.242, 0.305, 0.018);
+          m.rotation.z = side * 0.14;
+        });
+        // Triceps posterior belly
+        const triGeo = new THREE.SphereGeometry(0.038, 16, 14);
+        triGeo.scale(0.9, 2.5, 0.85);
+        addMeshToOrgan(armMuscGrp, triGeo, muscleMat, m => {
+          m.position.set(side * 0.252, 0.312, -0.022);
+          m.rotation.z = side * 0.14;
+        });
+        // Forearm Brachioradialis & Flexors
+        const foreStart = new THREE.Vector3(side * 0.265, 0.175, -0.005);
+        const foreEnd = new THREE.Vector3(side * 0.302, -0.035, 0.022);
+        addMeshToOrgan(armMuscGrp, createLimbSegmentGeometry(foreStart, foreEnd, 0.034, 0.021), muscleMat);
+      });
+
+      // 7. Gluteal Group (Gluteus Medius/Minimus Ventrogluteal & Gluteus Maximus)
+      const glutGrp = registerOrganGroup('gluteal_group', 'muscular');
+      [-1, 1].forEach(side => {
+        // Gluteus medius (anterolateral hip / Ventrogluteal IM site)
+        const gMedGeo = new THREE.SphereGeometry(0.058, 18, 14);
+        gMedGeo.scale(0.68, 0.95, 0.92);
+        addMeshToOrgan(glutGrp, gMedGeo, muscleMat, m => {
+          m.position.set(side * 0.138, 0.022, 0.008);
+        });
+        // Gluteus maximus posteriorly
+        const gMaxGeo = new THREE.SphereGeometry(0.074, 20, 16);
+        gMaxGeo.scale(0.95, 1.05, 0.78);
+        addMeshToOrgan(glutGrp, gMaxGeo, muscleMat, m => {
+          m.position.set(side * 0.082, -0.032, -0.058);
+        });
+      });
+
+      // 8. Quadriceps Femoris (incl. Vastus Lateralis IM target) & Hamstrings
+      const quadGrp = registerOrganGroup('quadriceps_femoris', 'muscular');
+      [-1, 1].forEach(side => {
+        // Rectus femoris (anterior thigh)
+        const rfGeo = new THREE.SphereGeometry(0.044, 18, 16);
+        rfGeo.scale(0.88, 3.6, 0.85);
+        addMeshToOrgan(quadGrp, rfGeo, muscleMat, m => m.position.set(side * 0.095, -0.235, 0.032));
+
+        // Vastus lateralis (lateral thigh — IM site)
+        const vlGeo = new THREE.SphereGeometry(0.046, 18, 16);
+        vlGeo.scale(0.78, 3.5, 0.95);
+        addMeshToOrgan(quadGrp, vlGeo, muscleMat, m => m.position.set(side * 0.128, -0.235, 0.008));
+
+        // Vastus medialis (teardrop medial thigh)
+        const vmGeo = new THREE.SphereGeometry(0.042, 16, 14);
+        vmGeo.scale(0.82, 3.2, 0.85);
+        addMeshToOrgan(quadGrp, vmGeo, muscleMat, m => m.position.set(side * 0.068, -0.255, 0.015));
+
+        // Hamstrings posteriorly
+        const hamGeo = new THREE.SphereGeometry(0.048, 18, 14);
+        hamGeo.scale(0.95, 3.4, 0.82);
+        addMeshToOrgan(quadGrp, hamGeo, muscleMat, m => m.position.set(side * 0.095, -0.235, -0.032));
+      });
+
+      // 9. Gastrocnemius, Soleus & Tibialis Anterior (Lower Leg)
+      const calfGrp = registerOrganGroup('gastrocnemius_soleus', 'muscular');
+      [-1, 1].forEach(side => {
+        // Gastrocnemius medial & lateral heads
+        [-0.014, 0.014].forEach(offset => {
+          const gasGeo = new THREE.SphereGeometry(0.034, 16, 14);
+          gasGeo.scale(0.78, 2.6, 0.88);
+          addMeshToOrgan(calfGrp, gasGeo, muscleMat, m => m.position.set(side * 0.095 + offset, -0.555, -0.028));
+        });
+        // Soleus & Tibialis anterior
+        const calfStart = new THREE.Vector3(side * 0.095, -0.455, 0.002);
+        const calfEnd = new THREE.Vector3(side * 0.092, -0.775, -0.005);
+        addMeshToOrgan(calfGrp, createLimbSegmentGeometry(calfStart, calfEnd, 0.042, 0.024), muscleMat);
+      });
+    }
+
+    function buildIntegumentarySystem() {
+      const skinGrp = registerOrganGroup('skin_envelope', 'integumentary');
+      const skinMat = createOrganMaterial({
+        color: 0xe8b49a,
+        roughness: 0.42,
+        metalness: 0.02,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false
+      });
+
+      // Head & Neck envelope
+      const headSkin = new THREE.SphereGeometry(0.104, 28, 24);
+      headSkin.scale(0.88, 1.12, 1.04);
+      addMeshToOrgan(skinGrp, headSkin, skinMat, m => m.position.set(0, 0.715, 0.002));
+
+      const neckSkin = new THREE.CylinderGeometry(0.058, 0.068, 0.11, 20);
+      addMeshToOrgan(skinGrp, neckSkin, skinMat, m => m.position.set(0, 0.565, 0.002));
+
+      // Torso lofted anatomical envelope (chest -> waist -> pelvis)
+      const torsoLathePts = [
+        new THREE.Vector2(0.001, -0.085),
+        new THREE.Vector2(0.152, -0.055),
+        new THREE.Vector2(0.158, 0.035),
+        new THREE.Vector2(0.136, 0.135),
+        new THREE.Vector2(0.152, 0.265),
+        new THREE.Vector2(0.178, 0.415),
+        new THREE.Vector2(0.068, 0.515)
+      ];
+      const torsoGeo = new THREE.LatheGeometry(torsoLathePts, 32);
+      torsoGeo.scale(1.06, 1, 0.78);
+      addMeshToOrgan(skinGrp, torsoGeo, skinMat, m => m.position.set(0, 0, 0.012));
+
+      // Upper & Lower Limb skin envelopes
+      [-1, 1].forEach(side => {
+        const sh = new THREE.Vector3(side * 0.225, 0.445, 0.0);
+        const el = new THREE.Vector3(side * 0.265, 0.175, -0.005);
+        const wr = new THREE.Vector3(side * 0.308, -0.065, 0.025);
+        addMeshToOrgan(skinGrp, createLimbSegmentGeometry(sh, el, 0.056, 0.044), skinMat);
+        addMeshToOrgan(skinGrp, createLimbSegmentGeometry(el, wr, 0.043, 0.028), skinMat);
+
+        const hip = new THREE.Vector3(side * 0.102, -0.035, 0.002);
+        const knee = new THREE.Vector3(side * 0.095, -0.435, 0.005);
+        const ankle = new THREE.Vector3(side * 0.092, -0.805, -0.005);
+        addMeshToOrgan(skinGrp, createLimbSegmentGeometry(hip, knee, 0.084, 0.056), skinMat);
+        addMeshToOrgan(skinGrp, createLimbSegmentGeometry(knee, ankle, 0.054, 0.032), skinMat);
+      });
+    }
+
+    // Build all 7 systems now
+    buildSkeletalSystem();
+    buildCardiovascularSystem();
+    buildRespiratorySystem();
+    buildDigestiveSystem();
+    buildNervousSystem();
+    buildMuscularSystem();
+    buildIntegumentarySystem();
+
+    // ============================================================================
+    // 7. 3D NURSING ASSESSMENT MARKER PINS
+    // ============================================================================
+    const pinsGroup = new THREE.Group();
+    pinsGroup.name = 'assessment_pins';
+    scene.add(pinsGroup);
+    const pinMeshes = [];
+    let pinsVisible = true;
+
+    ASSESSMENT_SITES.forEach(site => {
+      const pinHolder = new THREE.Group();
+      pinHolder.position.copy(site.pos);
+
+      // Glowing spherical beacon
+      const coreGeo = new THREE.SphereGeometry(0.011, 16, 16);
+      const coreMat = new THREE.MeshStandardMaterial({
+        color: site.color,
+        emissive: site.color,
+        emissiveIntensity: 0.75,
+        roughness: 0.2
+      });
+      const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+      coreMesh.userData = { pinId: site.id, isPin: true };
+      pinHolder.add(coreMesh);
+      pinMeshes.push(coreMesh);
+
+      // Outer halo ring
+      const haloGeo = new THREE.RingGeometry(0.014, 0.019, 24);
+      const haloMat = new THREE.MeshBasicMaterial({
+        color: site.color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.75
+      });
+      const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+      haloMesh.userData = { isHalo: true };
+      pinHolder.add(haloMesh);
+
+      pinsGroup.add(pinHolder);
+    });
+
+    // ============================================================================
+    // 8. LAYER OPACITY, MASTER PEEL SLIDER & EXPLODE MANAGEMENT
+    // ============================================================================
+    const systemState = {};
+    SYSTEMS.forEach(s => {
+      systemState[s.id] = {
+        visible: s.visible,
+        opacity: s.defaultOpacity
+      };
+    });
+
+    let selectedOrganId = 'heart';
+    let selectedPinId = null;
+    let isXrayMode = false;
+    let isWireframeMode = false;
+    let anteriorRibsPeeled = false;
+
+    function applyVisualStates() {
+      SYSTEMS.forEach(sys => {
+        const st = systemState[sys.id];
+        const grp = systemGroups[sys.id];
+        grp.visible = st.visible && st.opacity > 0.01;
+
+        grp.traverse(obj => {
+          if (obj.isMesh && obj.material) {
+            const organId = obj.userData.organId;
+            const isHiddenOrgan = hiddenOrgans.has(organId);
+            const isPeeledRib = anteriorRibsPeeled && anteriorRibMeshes.includes(obj);
+
+            obj.visible = !isHiddenOrgan && !isPeeledRib;
+
+            let targetOpacity = st.opacity;
+            if (isXrayMode && selectedOrganId && organId !== selectedOrganId) {
+              targetOpacity = Math.min(targetOpacity, 0.14);
+            }
+
+            obj.material.transparent = targetOpacity < 0.99;
+            obj.material.opacity = targetOpacity;
+            obj.material.depthWrite = targetOpacity > 0.65;
+            obj.material.wireframe = isWireframeMode;
+
+            // Highlight selected organ
+            if (selectedOrganId === organId && !selectedPinId) {
+              obj.material.emissive.setHex(0x0ea5e9);
+              obj.material.emissiveIntensity = 0.42;
+            } else {
+              obj.material.emissive.copy(obj.userData.baseEmissive);
+              obj.material.emissiveIntensity = obj.userData.systemId === 'nervous' ? 0.25 : 0;
+            }
+          }
+        });
+      });
+
+      // Highlight selected pin
+      pinMeshes.forEach(pm => {
+        const isSel = pm.userData.pinId === selectedPinId;
+        pm.scale.setScalar(isSel ? 1.55 : 1.0);
+        pm.material.emissiveIntensity = isSel ? 1.4 : 0.75;
+      });
+
+      updateLayersListUI();
+    }
+
+    // Master Peel Depth Slider (0 = Full Skin/Surface -> 100 = Deep CNS/Cardiovascular Core)
+    function applyMasterPeel(peelPct) {
+      const p = peelPct / 100; // 0.0 to 1.0
+      const badge = document.getElementById('peel-stage-badge');
+
+      // Stage label
+      if (peelPct < 12) badge.textContent = '1. Skin & Surface';
+      else if (peelPct < 35) badge.textContent = '2. Muscular Layer';
+      else if (peelPct < 55) badge.textContent = '3. Skeletal Cage';
+      else if (peelPct < 78) badge.textContent = '4. Thoracic & GI Viscera';
+      else badge.textContent = '5. Deep Heart & Nerves';
+
+      // Smooth fade curves per layer depth
+      // Skin: fades from 0 -> 22%
+      systemState.integumentary.opacity = Math.max(0, Math.min(1, 1 - p / 0.22) * 0.75);
+      systemState.integumentary.visible = systemState.integumentary.opacity > 0.02;
+
+      // Muscular: fades out between 20% -> 48%
+      systemState.muscular.opacity = p < 0.20 ? 1.0 : Math.max(0, 1 - (p - 0.20) / 0.28);
+      systemState.muscular.visible = systemState.muscular.opacity > 0.02;
+
+      // Skeletal: stays 100% until 48%, then fades to 22% ghost or 0% by 85%
+      systemState.skeletal.opacity = p < 0.48 ? 1.0 : Math.max(0.12, 1 - (p - 0.48) / 0.42);
+      systemState.skeletal.visible = true;
+
+      // Respiratory & Digestive: stay solid until 72%, then fade so Heart & Nerves stand out
+      const visceraOp = p < 0.72 ? 1.0 : Math.max(0.15, 1 - (p - 0.72) / 0.28);
+      systemState.respiratory.opacity = visceraOp;
+      systemState.respiratory.visible = true;
+      systemState.digestive.opacity = visceraOp;
+      systemState.digestive.visible = true;
+
+      // Cardiovascular & Nervous: always 100% visible in the deep core
+      systemState.cardiovascular.opacity = 1.0;
+      systemState.cardiovascular.visible = true;
+      systemState.nervous.opacity = 1.0;
+      systemState.nervous.visible = true;
+
+      applyVisualStates();
+    }
+
+    // Build Left Panel Layer Cards UI
+    const layersListEl = document.getElementById('layers-list');
+    function buildLayersListUI() {
+      layersListEl.innerHTML = '';
+      SYSTEMS.forEach(sys => {
+        const st = systemState[sys.id];
+        const card = document.createElement('div');
+        card.className = `layer-card ${!st.visible ? 'disabled' : ''}`;
+        card.id = `layer-card-${sys.id}`;
+
+        card.innerHTML = `
+          <div class="layer-top">
+            <div class="layer-title-group" data-toggle-sys="${sys.id}">
+              <input type="checkbox" ${st.visible ? 'checked' : ''} style="accent-color:${sys.color}; cursor:pointer;" />
+              <span class="layer-dot" style="background:${sys.color}"></span>
+              <span class="layer-name">${sys.name}</span>
+            </div>
+            <span class="layer-depth-tag">L${sys.depthOrder}</span>
+          </div>
+          <div class="layer-controls">
+            <input type="range" class="layer-slider" data-slider-sys="${sys.id}" min="0" max="100" value="${Math.round(st.opacity * 100)}" />
+            <span class="layer-pct" id="pct-${sys.id}">${Math.round(st.opacity * 100)}%</span>
+          </div>
+        `;
+        layersListEl.appendChild(card);
+      });
+
+      layersListEl.querySelectorAll('[data-toggle-sys]').forEach(el => {
+        el.addEventListener('click', () => {
+          const sysId = el.getAttribute('data-toggle-sys');
+          systemState[sysId].visible = !systemState[sysId].visible;
+          if (systemState[sysId].visible && systemState[sysId].opacity < 0.1) {
+            systemState[sysId].opacity = 0.85;
+          }
+          applyVisualStates();
+        });
+      });
+
+      layersListEl.querySelectorAll('[data-slider-sys]').forEach(slider => {
+        slider.addEventListener('input', e => {
+          const sysId = slider.getAttribute('data-slider-sys');
+          const val = parseInt(e.target.value, 10) / 100;
+          systemState[sysId].opacity = val;
+          systemState[sysId].visible = val > 0.01;
+          applyVisualStates();
+        });
+      });
+    }
+
+    function updateLayersListUI() {
+      SYSTEMS.forEach(sys => {
+        const st = systemState[sys.id];
+        const card = document.getElementById(`layer-card-${sys.id}`);
+        if (!card) return;
+        card.classList.toggle('disabled', !st.visible || st.opacity <= 0.01);
+        const cb = card.querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = st.visible && st.opacity > 0.01;
+        const sl = card.querySelector('.layer-slider');
+        if (sl) sl.value = Math.round(st.opacity * 100);
+        const pct = document.getElementById(`pct-${sys.id}`);
+        if (pct) pct.textContent = `${Math.round(st.opacity * 100)}%`;
+      });
+
+      const unhideBtn = document.getElementById('btn-unhide-all');
+      if (hiddenOrgans.size > 0) {
+        unhideBtn.style.display = 'inline-flex';
+        unhideBtn.textContent = `Restore Hidden (${hiddenOrgans.size})`;
+      } else {
+        unhideBtn.style.display = 'none';
+      }
+    }
+
+    buildLayersListUI();
+
+    // ============================================================================
+    // 9. RIGHT PANEL: CLINICAL INSPECTOR, ASSESSMENT SITES & QUIZ RENDERERS
+    // ============================================================================
+    const inspectorEl = document.getElementById('inspector-content');
+
+    function renderInspector() {
+      if (selectedPinId) {
+        const site = ASSESSMENT_SITES.find(s => s.id === selectedPinId);
+        if (!site) return;
+        inspectorEl.innerHTML = `
+          <div class="organ-badge" style="background:${site.color}22; color:${site.color}; border:1px solid ${site.color}66;">
+            🩺 ${site.catLabel}
+          </div>
+          <div class="organ-title">${site.name}</div>
+          <div class="organ-latin">Surface & Physical Assessment Landmark</div>
+
+          <div class="organ-actions">
+            <button class="btn btn-sm btn-primary" id="btn-focus-pin">🎯 Focus Camera</button>
+            <button class="btn btn-sm" id="btn-back-to-organ">← View Underlying Organ</button>
+          </div>
+
+          <div class="info-block">
+            <h4>📍 Anatomical Surface Landmark</h4>
+            <p>${site.landmark}</p>
+          </div>
+
+          <div class="nursing-pearl-box">
+            <h4>✚ Nursing Assessment & Clinical Technique</h4>
+            <p style="font-size:12.5px; line-height:1.55; color:#e2e8f0;">${site.clinicalNotes}</p>
+          </div>
+        `;
+
+        document.getElementById('btn-focus-pin')?.addEventListener('click', () => {
+          animateCameraTo(
+            site.pos.clone().add(new THREE.Vector3(0, 0.04, 0.52)),
+            site.pos.clone()
+          );
+        });
+        document.getElementById('btn-back-to-organ')?.addEventListener('click', () => {
+          selectedPinId = null;
+          applyVisualStates();
+          renderInspector();
+        });
+        return;
+      }
+
+      const data = ANATOMY_DB[selectedOrganId];
+      if (!data) {
+        inspectorEl.innerHTML = `<div class="inspector-empty">Tap or click any 3D organ, bone, muscle, or clinical pin to inspect its anatomy and nursing pearls.</div>`;
+        return;
+      }
+
+      const sysObj = SYSTEMS.find(s => s.id === data.system);
+      const pearlsHtml = data.nursingPearls.map(p => `<li>${p}</li>`).join('');
+
+      inspectorEl.innerHTML = `
+        <div class="organ-badge" style="background:${sysObj.color}25; color:${sysObj.color}; border:1px solid ${sysObj.color}66;">
+          <span class="layer-dot" style="background:${sysObj.color}; width:8px; height:8px;"></span>
+          ${sysObj.name}
+        </div>
+        <div class="organ-title">${data.name}</div>
+        <div class="organ-latin">${data.latin}</div>
+
+        <div class="organ-actions">
+          <button class="btn btn-sm ${isXrayMode ? 'active' : ''}" id="btn-isolate-organ">🔬 ${isXrayMode ? 'Exit Isolate' : 'Isolate (X-Ray)'}</button>
+          <button class="btn btn-sm btn-danger" id="btn-hide-organ">🧅 Peel / Hide Structure</button>
+          <button class="btn btn-sm" id="btn-focus-organ">🎯 Center View</button>
+        </div>
+
+        <div class="info-block">
+          <h4>📖 Anatomical Overview & Physiology</h4>
+          <p>${data.description}</p>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-mini">
+            <div class="info-mini-label">🩸 Blood Supply</div>
+            <div class="info-mini-val">${data.bloodSupply}</div>
+          </div>
+          <div class="info-mini">
+            <div class="info-mini-label">⚡ Innervation</div>
+            <div class="info-mini-val">${data.innervation}</div>
+          </div>
+        </div>
+
+        <div class="nursing-pearl-box">
+          <h4>✚ High-Yield Nursing & NCLEX Clinical Pearls</h4>
+          <ul>${pearlsHtml}</ul>
+        </div>
+      `;
+
+      document.getElementById('btn-isolate-organ')?.addEventListener('click', () => {
+        isXrayMode = !isXrayMode;
+        document.getElementById('btn-xray-mode').classList.toggle('active', isXrayMode);
+        applyVisualStates();
+        renderInspector();
+      });
+
+      document.getElementById('btn-hide-organ')?.addEventListener('click', () => {
+        hiddenOrgans.add(selectedOrganId);
+        applyVisualStates();
+      });
+
+      document.getElementById('btn-focus-organ')?.addEventListener('click', () => {
+        focusOnOrgan(selectedOrganId);
+      });
+    }
+
+    // Assessment Tab List
+    const assessmentListEl = document.getElementById('assessment-list');
+    let currentAssessFilter = 'all';
+
+    function renderAssessmentList() {
+      assessmentListEl.innerHTML = '';
+      const filtered = ASSESSMENT_SITES.filter(s => currentAssessFilter === 'all' || s.category === currentAssessFilter);
+      filtered.forEach(site => {
+        const div = document.createElement('div');
+        div.className = `assessment-item ${selectedPinId === site.id ? 'selected' : ''}`;
+        div.innerHTML = `
+          <div class="assessment-item-header">
+            <span class="assessment-item-title">${site.name}</span>
+            <span class="assessment-cat-tag" style="background:${site.color}25; color:${site.color}">${site.category}</span>
+          </div>
+          <div class="assessment-item-loc">📍 ${site.landmark}</div>
+          <div class="assessment-item-desc">${site.clinicalNotes}</div>
+        `;
+        div.addEventListener('click', () => {
+          selectedPinId = site.id;
+          pinsVisible = true;
+          pinsGroup.visible = true;
+          document.getElementById('btn-toggle-pins').classList.add('active');
+          applyVisualStates();
+          renderAssessmentList();
+          renderInspector();
+          animateCameraTo(
+            site.pos.clone().add(new THREE.Vector3(site.pos.x * 0.6, 0.04, 0.55)),
+            site.pos.clone()
+          );
+        });
+        assessmentListEl.appendChild(div);
+      });
+    }
+
+    document.querySelectorAll('[data-assess-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-assess-filter]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentAssessFilter = btn.getAttribute('data-assess-filter');
+        renderAssessmentList();
+      });
+    });
+
+    // ============================================================================
+    // 10. INTERACTIVE NURSING QUIZ ENGINE ("FIND ON 3D MODEL" & NCLEX MCQ)
+    // ============================================================================
+    let quizMode = 'locate'; // 'locate' | 'mcq'
+    let quizIndex = 0;
+    let quizScore = 0;
+    let quizAnswered = false;
+    const quizContainer = document.getElementById('quiz-container');
+
+    function renderQuiz() {
+      if (quizMode === 'locate') {
+        const q = QUIZ_LOCATE_QUESTIONS[quizIndex % QUIZ_LOCATE_QUESTIONS.length];
+        quizContainer.innerHTML = `
+          <div class="quiz-card">
+            <div class="quiz-score-bar">
+              <span>Question ${(quizIndex % QUIZ_LOCATE_QUESTIONS.length) + 1} of ${QUIZ_LOCATE_QUESTIONS.length}</span>
+              <span style="color:var(--accent-teal); font-weight:700;">Score: ${quizScore}</span>
+            </div>
+            <div class="quiz-prompt">🎯 ${q.prompt}</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+              👉 Tap/click directly on the 3D model or assessment pin in the viewport!
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-sm" id="btn-quiz-hint">💡 Auto-Peel Layer Hint</button>
+              <button class="btn btn-sm btn-primary" id="btn-quiz-next">Next Challenge →</button>
+            </div>
+            <div id="quiz-locate-feedback" class="quiz-feedback"></div>
+          </div>
+        `;
+
+        document.getElementById('btn-quiz-hint')?.addEventListener('click', () => {
+          document.getElementById('master-peel-slider').value = q.peelPreset;
+          applyMasterPeel(q.peelPreset);
+          if (q.targetType === 'pin') {
+            pinsVisible = true;
+            pinsGroup.visible = true;
+          }
+        });
+
+        document.getElementById('btn-quiz-next')?.addEventListener('click', () => {
+          quizIndex++;
+          quizAnswered = false;
+          renderQuiz();
+        });
+      } else {
+        const q = QUIZ_MCQ_QUESTIONS[quizIndex % QUIZ_MCQ_QUESTIONS.length];
+        const optsHtml = q.options.map((opt, idx) => `
+          <button class="quiz-option" data-mcq-idx="${idx}">${opt}</button>
+        `).join('');
+
+        quizContainer.innerHTML = `
+          <div class="quiz-card">
+            <div class="quiz-score-bar">
+              <span>NCLEX Item ${(quizIndex % QUIZ_MCQ_QUESTIONS.length) + 1} of ${QUIZ_MCQ_QUESTIONS.length}</span>
+              <span style="color:var(--accent-teal); font-weight:700;">Score: ${quizScore}</span>
+            </div>
+            <div class="quiz-prompt">${q.question}</div>
+            <div id="mcq-options">${optsHtml}</div>
+            <div id="quiz-mcq-feedback" class="quiz-feedback"></div>
+            <button class="btn btn-sm btn-primary" id="btn-mcq-next" style="margin-top:10px; width:100%;">Next Question →</button>
+          </div>
+        `;
+
+        quizContainer.querySelectorAll('[data-mcq-idx]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (quizAnswered) return;
+            quizAnswered = true;
+            const chosen = parseInt(btn.getAttribute('data-mcq-idx'), 10);
+            const fb = document.getElementById('quiz-mcq-feedback');
+
+            quizContainer.querySelectorAll('[data-mcq-idx]').forEach((b, i) => {
+              b.disabled = true;
+              if (i === q.correctIndex) b.classList.add('correct');
+              else if (i === chosen) b.classList.add('wrong');
+            });
+
+            if (chosen === q.correctIndex) {
+              quizScore++;
+              fb.style.background = 'rgba(74, 222, 128, 0.16)';
+              fb.style.border = '1px solid var(--accent-green)';
+              fb.innerHTML = `<strong>✅ Correct!</strong> ${q.explanation}`;
+            } else {
+              fb.style.background = 'rgba(251, 113, 133, 0.16)';
+              fb.style.border = '1px solid var(--accent-rose)';
+              fb.innerHTML = `<strong>❌ Rationale:</strong> ${q.explanation}`;
+            }
+            fb.classList.add('show');
+
+            if (q.focusOrgan) {
+              selectedOrganId = q.focusOrgan;
+              selectedPinId = null;
+              focusOnOrgan(q.focusOrgan);
+              applyVisualStates();
+            } else if (q.focusPin) {
+              selectedPinId = q.focusPin;
+              applyVisualStates();
+            }
+          });
+        });
+
+        document.getElementById('btn-mcq-next')?.addEventListener('click', () => {
+          quizIndex++;
+          quizAnswered = false;
+          renderQuiz();
+        });
+      }
+    }
+
+    function handleQuiz3DSelection(pickedType, pickedId) {
+      const quizTabVisible = document.getElementById('tab-quiz').style.display !== 'none';
+      if (!quizTabVisible || quizMode !== 'locate') return;
+
+      const q = QUIZ_LOCATE_QUESTIONS[quizIndex % QUIZ_LOCATE_QUESTIONS.length];
+      const fb = document.getElementById('quiz-locate-feedback');
+      if (!fb) return;
+
+      if (pickedType === q.targetType && pickedId === q.targetId) {
+        if (!quizAnswered) {
+          quizScore++;
+          quizAnswered = true;
+        }
+        fb.style.background = 'rgba(74, 222, 128, 0.18)';
+        fb.style.border = '1px solid var(--accent-green)';
+        fb.innerHTML = `<strong>✅ Spot On!</strong> ${q.explanation}`;
+        fb.classList.add('show');
+      } else {
+        const pickedName = pickedType === 'pin'
+          ? ASSESSMENT_SITES.find(s => s.id === pickedId)?.name
+          : ANATOMY_DB[pickedId]?.name;
+        fb.style.background = 'rgba(251, 113, 133, 0.18)';
+        fb.style.border = '1px solid var(--accent-rose)';
+        fb.innerHTML = `<strong>Not quite!</strong> You clicked <em>${pickedName || 'another structure'}</em>. Try peeling layers or click "Auto-Peel Layer Hint".`;
+        fb.classList.add('show');
+      }
+    }
+
+    document.getElementById('quiz-mode-locate').addEventListener('click', () => {
+      quizMode = 'locate';
+      quizAnswered = false;
+      document.getElementById('quiz-mode-locate').classList.add('active');
+      document.getElementById('quiz-mode-mcq').classList.remove('active');
+      renderQuiz();
+    });
+
+    document.getElementById('quiz-mode-mcq').addEventListener('click', () => {
+      quizMode = 'mcq';
+      quizAnswered = false;
+      document.getElementById('quiz-mode-mcq').classList.add('active');
+      document.getElementById('quiz-mode-locate').classList.remove('active');
+      renderQuiz();
+    });
+
+    // ============================================================================
+    // 11. RAYCASTING (CLICK, TAP & HOVER SELECTION) & CAMERA TWEENING
+    // ============================================================================
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const tooltipEl = document.getElementById('hover-tooltip');
+    let pointerDownPos = { x: 0, y: 0 };
+
+    function getVisiblePickables() {
+      const activePins = pinsGroup.visible ? pinMeshes : [];
+      const activeOrganMeshes = pickableMeshes.filter(m => {
+        const sysGroup = systemGroups[m.userData.systemId];
+        return sysGroup && sysGroup.visible && m.visible && m.material.opacity > 0.12;
+      });
+      return [...activePins, ...activeOrganMeshes];
+    }
+
+    renderer.domElement.addEventListener('pointerdown', e => {
+      pointerDownPos.x = e.clientX;
+      pointerDownPos.y = e.clientY;
+    });
+
+    renderer.domElement.addEventListener('pointermove', e => {
+      if (e.pointerType === 'touch') return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(getVisiblePickables(), false);
+
+      if (hits.length > 0) {
+        const hitObj = hits[0].object;
+        renderer.domElement.style.cursor = 'pointer';
+        let label = '';
+        if (hitObj.userData.isPin) {
+          const site = ASSESSMENT_SITES.find(s => s.id === hitObj.userData.pinId);
+          label = `🩺 ${site ? site.name : ''}`;
+        } else {
+          const info = ANATOMY_DB[hitObj.userData.organId];
+          label = info ? info.name : '';
+        }
+        tooltipEl.textContent = label;
+        tooltipEl.style.left = `${e.clientX}px`;
+        tooltipEl.style.top = `${e.clientY}px`;
+        tooltipEl.style.display = 'block';
+      } else {
+        renderer.domElement.style.cursor = 'grab';
+        tooltipEl.style.display = 'none';
+      }
+    });
+
+    renderer.domElement.addEventListener('pointerup', e => {
+      const dx = e.clientX - pointerDownPos.x;
+      const dy = e.clientY - pointerDownPos.y;
+      if (Math.hypot(dx, dy) > 7) return; // Ignore orbit drags
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(getVisiblePickables(), false);
+
+      if (hits.length > 0) {
+        const hitObj = hits[0].object;
+        if (hitObj.userData.isPin) {
+          selectedPinId = hitObj.userData.pinId;
+          handleQuiz3DSelection('pin', selectedPinId);
+        } else {
+          selectedPinId = null;
+          selectedOrganId = hitObj.userData.organId;
+          handleQuiz3DSelection('organ', selectedOrganId);
+        }
+        applyVisualStates();
+        renderInspector();
+        renderAssessmentList();
+      }
+    });
+
+    // Smooth Camera Tweening
+    let camAnim = null;
+    function animateCameraTo(targetPos, targetLookAt, duration = 650) {
+      camAnim = {
+        startPos: camera.position.clone(),
+        endPos: targetPos.clone(),
+        startLook: controls.target.clone(),
+        endLook: targetLookAt.clone(),
+        startTime: performance.now(),
+        duration
+      };
+    }
+
+    function focusOnOrgan(organId) {
+      const grp = organGroups[organId];
+      if (!grp) return;
+      const box = new THREE.Box3().setFromObject(grp);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const dist = Math.max(size.length() * 1.65, 0.58);
+      animateCameraTo(center.clone().add(new THREE.Vector3(0, 0.05, dist)), center);
+    }
+
+    // Camera Presets
+    const CAM_PRESETS = {
+      anterior: { pos: new THREE.Vector3(0, 0.08, 2.45), target: new THREE.Vector3(0, 0.05, 0) },
+      posterior: { pos: new THREE.Vector3(0, 0.08, -2.45), target: new THREE.Vector3(0, 0.05, 0) },
+      lateral: { pos: new THREE.Vector3(-2.35, 0.08, 0.2), target: new THREE.Vector3(0, 0.05, 0) },
+      thorax: { pos: new THREE.Vector3(0, 0.36, 0.88), target: new THREE.Vector3(0, 0.35, 0.02) },
+      abdomen: { pos: new THREE.Vector3(0, 0.12, 0.88), target: new THREE.Vector3(0, 0.11, 0.02) },
+      head: { pos: new THREE.Vector3(0, 0.68, 0.68), target: new THREE.Vector3(0, 0.68, 0) }
+    };
+
+    document.querySelectorAll('[data-cam]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.getAttribute('data-cam');
+        const preset = CAM_PRESETS[key];
+        if (preset) animateCameraTo(preset.pos, preset.target);
+      });
+    });
+
+    // ============================================================================
+    // 12. UI CONTROLS, SEARCH & MOBILE NAVIGATION BINDINGS
+    // ============================================================================
+    document.getElementById('master-peel-slider').addEventListener('input', e => {
+      applyMasterPeel(parseInt(e.target.value, 10));
+    });
+
+    document.getElementById('explode-slider').addEventListener('input', e => {
+      const val = parseInt(e.target.value, 10) / 100;
+      document.getElementById('explode-val').textContent = `${e.target.value}%`;
+      SYSTEMS.forEach(sys => {
+        const grp = systemGroups[sys.id];
+        grp.position.copy(sys.explodeVec).multiplyScalar(val);
+      });
+    });
+
+    document.getElementById('clip-slider').addEventListener('input', e => {
+      const pct = parseInt(e.target.value, 10);
+      if (pct >= 99) {
+        globalClipPlane.constant = 2.0;
+        document.getElementById('clip-val').textContent = 'Off';
+      } else {
+        // Slice from anterior (+0.22) to posterior (-0.18)
+        globalClipPlane.constant = -0.18 + (pct / 100) * 0.40;
+        document.getElementById('clip-val').textContent = `${100 - pct}%`;
+      }
+    });
+
+    document.getElementById('btn-show-all-layers').addEventListener('click', () => {
+      SYSTEMS.forEach(sys => {
+        systemState[sys.id].visible = true;
+        systemState[sys.id].opacity = sys.defaultOpacity;
+      });
+      document.getElementById('master-peel-slider').value = 18;
+      document.getElementById('peel-stage-badge').textContent = 'All Systems Active';
+      applyVisualStates();
+    });
+
+    document.getElementById('btn-unhide-all').addEventListener('click', () => {
+      hiddenOrgans.clear();
+      applyVisualStates();
+    });
+
+    document.getElementById('btn-peel-anterior-ribs').addEventListener('click', e => {
+      anteriorRibsPeeled = !anteriorRibsPeeled;
+      e.currentTarget.classList.toggle('active', anteriorRibsPeeled);
+      applyVisualStates();
+    });
+
+    document.getElementById('btn-xray-mode').addEventListener('click', e => {
+      isXrayMode = !isXrayMode;
+      e.currentTarget.classList.toggle('active', isXrayMode);
+      applyVisualStates();
+      renderInspector();
+    });
+
+    document.getElementById('btn-wireframe-mode').addEventListener('click', e => {
+      isWireframeMode = !isWireframeMode;
+      e.currentTarget.classList.toggle('active', isWireframeMode);
+      applyVisualStates();
+    });
+
+    document.getElementById('btn-toggle-pins').addEventListener('click', e => {
+      pinsVisible = !pinsVisible;
+      pinsGroup.visible = pinsVisible;
+      e.currentTarget.classList.toggle('active', pinsVisible);
+    });
+    document.getElementById('btn-toggle-pins').classList.add('active');
+
+    document.getElementById('btn-reset-all').addEventListener('click', () => {
+      hiddenOrgans.clear();
+      anteriorRibsPeeled = false;
+      isXrayMode = false;
+      isWireframeMode = false;
+      selectedPinId = null;
+      selectedOrganId = 'heart';
+      document.getElementById('btn-peel-anterior-ribs').classList.remove('active');
+      document.getElementById('btn-xray-mode').classList.remove('active');
+      document.getElementById('btn-wireframe-mode').classList.remove('active');
+      document.getElementById('explode-slider').value = 0;
+      document.getElementById('explode-val').textContent = '0%';
+      document.getElementById('clip-slider').value = 100;
+      document.getElementById('clip-val').textContent = 'Off';
+      globalClipPlane.constant = 2.0;
+      SYSTEMS.forEach(sys => systemGroups[sys.id].position.set(0, 0, 0));
+      document.getElementById('master-peel-slider').value = 18;
+      applyMasterPeel(18);
+      renderInspector();
+      animateCameraTo(CAM_PRESETS.anterior.pos, CAM_PRESETS.anterior.target);
+    });
+
+    // Right Panel Tabs
+    function switchRightTab(tabName) {
+      document.querySelectorAll('.panel-tab').forEach(t => {
+        t.classList.toggle('active', t.getAttribute('data-tab') === tabName);
+      });
+      document.getElementById('tab-inspector').style.display = tabName === 'inspector' ? 'block' : 'none';
+      document.getElementById('tab-assessment').style.display = tabName === 'assessment' ? 'block' : 'none';
+      document.getElementById('tab-quiz').style.display = tabName === 'quiz' ? 'block' : 'none';
+    }
+
+    document.querySelectorAll('.panel-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchRightTab(tab.getAttribute('data-tab')));
+    });
+
+    // Mobile Bottom Bar Navigation
+    const leftPanelEl = document.getElementById('left-panel');
+    const rightPanelEl = document.getElementById('right-panel');
+
+    function setMobilePanelState(mode) {
+      document.querySelectorAll('.mobile-nav-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-mobile-panel') === mode);
+      });
+      if (mode === 'none') {
+        leftPanelEl.classList.add('mobile-hidden');
+        rightPanelEl.classList.add('mobile-hidden');
+      } else if (mode === 'left') {
+        leftPanelEl.classList.remove('mobile-hidden');
+        rightPanelEl.classList.add('mobile-hidden');
+      } else {
+        leftPanelEl.classList.add('mobile-hidden');
+        rightPanelEl.classList.remove('mobile-hidden');
+        switchRightTab(mode);
+      }
+    }
+
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => setMobilePanelState(btn.getAttribute('data-mobile-panel')));
+    });
+    // Default mobile state: hide left panel so 3D body + inspector are clean
+    leftPanelEl.classList.add('mobile-hidden');
+
+    // Search Input Autocomplete
+    const searchInput = document.getElementById('structure-search');
+    const searchDropdown = document.getElementById('search-dropdown');
+
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        searchDropdown.classList.remove('open');
+        return;
+      }
+
+      const matches = [];
+      Object.entries(ANATOMY_DB).forEach(([id, item]) => {
+        if (item.name.toLowerCase().includes(q) || item.latin.toLowerCase().includes(q) || item.system.includes(q)) {
+          matches.push({ type: 'organ', id, label: item.name, tag: item.system });
+        }
+      });
+      ASSESSMENT_SITES.forEach(site => {
+        if (site.name.toLowerCase().includes(q) || site.landmark.toLowerCase().includes(q)) {
+          matches.push({ type: 'pin', id: site.id, label: `🩺 ${site.name}`, tag: 'Assessment' });
+        }
+      });
+
+      if (matches.length === 0) {
+        searchDropdown.innerHTML = `<div class="search-item" style="color:var(--text-muted)">No matching structure</div>`;
+      } else {
+        searchDropdown.innerHTML = matches.slice(0, 8).map(m => `
+          <div class="search-item" data-search-type="${m.type}" data-search-id="${m.id}">
+            <span>${m.label}</span>
+            <span class="search-item-sys">${m.tag}</span>
+          </div>
+        `).join('');
+
+        searchDropdown.querySelectorAll('.search-item[data-search-id]').forEach(el => {
+          el.addEventListener('click', () => {
+            const t = el.getAttribute('data-search-type');
+            const id = el.getAttribute('data-search-id');
+            searchDropdown.classList.remove('open');
+            searchInput.value = '';
+
+            if (t === 'pin') {
+              selectedPinId = id;
+              const site = ASSESSMENT_SITES.find(s => s.id === id);
+              if (site) animateCameraTo(site.pos.clone().add(new THREE.Vector3(0, 0.05, 0.55)), site.pos.clone());
+            } else {
+              selectedPinId = null;
+              selectedOrganId = id;
+              const sysId = ANATOMY_DB[id].system;
+              systemState[sysId].visible = true;
+              if (systemState[sysId].opacity < 0.5) systemState[sysId].opacity = 1.0;
+              focusOnOrgan(id);
+            }
+            applyVisualStates();
+            renderInspector();
+            switchRightTab('inspector');
+          });
+        });
+      }
+      searchDropdown.classList.add('open');
+    });
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.search-wrapper')) searchDropdown.classList.remove('open');
+    });
+
+    // Heart Rate Slider Physiology
+    let currentBPM = 72;
+    document.getElementById('hr-slider').addEventListener('input', e => {
+      currentBPM = parseInt(e.target.value, 10);
+      document.getElementById('hr-label').textContent = currentBPM;
+      const rr = Math.round(currentBPM / 4.5);
+      document.getElementById('rr-label').textContent = rr;
+      document.getElementById('heart-dot').style.animationDuration = `${(60 / currentBPM).toFixed(2)}s`;
+    });
+
+    // ============================================================================
+    // 13. ANIMATION LOOP (CARDIAC CYCLE, RESPIRATION & CAMERA INTERPOLATION)
+    // ============================================================================
+    const clock = new THREE.Clock();
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const elapsed = clock.getElapsedTime();
+
+      // 1. Physiological Heartbeat (Systole / Diastole double-pulse)
+      const heartGrp = organGroups['heart'];
+      if (heartGrp) {
+        const beatPhase = (elapsed * (currentBPM / 60)) % 1;
+        const lub = Math.exp(-Math.pow((beatPhase - 0.15) * 12, 2)) * 0.065;
+        const dub = Math.exp(-Math.pow((beatPhase - 0.35) * 14, 2)) * 0.038;
+        const s = 1 + lub + dub;
+        heartGrp.scale.set(s, s, s);
+      }
+
+      // 2. Physiological Respiratory Cycle (Lung expansion & Diaphragm excursion)
+      const respRate = currentBPM / 4.5;
+      const breathWave = (Math.sin(elapsed * (respRate / 60) * Math.PI * 2) + 1) * 0.5; // 0 to 1
+      const rLung = organGroups['right_lung'];
+      const lLung = organGroups['left_lung'];
+      const diaph = organGroups['diaphragm'];
+      if (rLung && lLung) {
+        const lx = 1 + breathWave * 0.045;
+        const ly = 1 + breathWave * 0.035;
+        rLung.scale.set(lx, ly, lx);
+        lLung.scale.set(lx, ly, lx);
+      }
+      if (diaph) {
+        diaph.position.y = -breathWave * 0.012;
+      }
+
+      // 3. Billboard Assessment Pin Halos toward Camera
+      pinsGroup.children.forEach((pinHolder, idx) => {
+        const halo = pinHolder.children[1];
+        if (halo) {
+          halo.lookAt(camera.position);
+          const pulse = 1 + Math.sin(elapsed * 4 + idx) * 0.18;
+          halo.scale.setScalar(pulse);
+        }
+      });
+
+      // 4. Smooth Camera Transitions
+      if (camAnim) {
+        const u = Math.min(1, (now - camAnim.startTime) / camAnim.duration);
+        const ease = 1 - Math.pow(1 - u, 3);
+        camera.position.lerpVectors(camAnim.startPos, camAnim.endPos, ease);
+        controls.target.lerpVectors(camAnim.startLook, camAnim.endLook, ease);
+        if (u >= 1) camAnim = null;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Window Resize Handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Initialize Default State
+    applyMasterPeel(18);
+    renderInspector();
+    renderAssessmentList();
+    renderQuiz();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
