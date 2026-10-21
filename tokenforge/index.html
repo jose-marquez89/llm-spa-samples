@@ -7,7 +7,7 @@
   <meta name="description" content="An interactive, visual playground explaining how Large Language Models work using everyday data analogies, 3D scatter plots, attention networks, and probability distributions." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Barlow+Condensed:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <!-- Three.js, D3.js, Chart.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -15,17 +15,25 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
+    /* ------------------------------------------------------------------
+       THEME: "The Foundry" — blackened iron, glowing embers, molten gold
+       and quench-steel teal. Forge metaphor for "forging" tokens.
+       ------------------------------------------------------------------ */
     :root {
-      --bg: #060913;
-      --bg-elevated: #0d1326;
-      --bg-card: rgba(15, 23, 42, 0.78);
-      --bg-card-solid: #111932;
-      --bg-glass: rgba(10, 15, 29, 0.85);
-      --border: rgba(148, 163, 184, 0.14);
-      --border-highlight: rgba(56, 189, 248, 0.45);
-      --text: #f8fafc;
-      --text-secondary: #cbd5e1;
-      --text-muted: #94a3b8;
+      --bg: #0d0a08;
+      --bg-elevated: #17120e;
+      --bg-card: rgba(30, 24, 20, 0.82);
+      --bg-card-solid: #1c1612;
+      --bg-glass: rgba(16, 12, 10, 0.9);
+      --border: rgba(214, 170, 120, 0.14);
+      --border-highlight: rgba(255, 122, 40, 0.5);
+      --text: #f7efe6;
+      --text-secondary: #d9cbbd;
+      --text-muted: #a8968a;
+      --ember: #ff7a28;
+      --ember-deep: #d9480f;
+      --gold: #ffb84d;
+      --white-hot: #fff4d6;
       --cyan: #38bdf8;
       --teal: #2dd4bf;
       --indigo: #818cf8;
@@ -33,12 +41,15 @@
       --rose: #fb7185;
       --amber: #fbbf24;
       --emerald: #34d399;
-      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-sans: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-display: 'Barlow Condensed', 'Barlow', sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
-      --radius-lg: 16px;
-      --radius-md: 12px;
-      --radius-sm: 8px;
-      --shadow: 0 20px 45px -15px rgba(0, 0, 0, 0.7);
+      --radius-lg: 6px;
+      --radius-md: 5px;
+      --radius-sm: 3px;
+      --shadow: 0 22px 45px -18px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 220, 180, 0.05);
+      --steel-plate: linear-gradient(180deg, rgba(48, 39, 33, 0.9) 0%, rgba(24, 19, 16, 0.92) 100%);
+      --molten: linear-gradient(135deg, #ffd27a 0%, #ff8a2b 45%, #d9480f 100%);
     }
 
     * {
@@ -55,9 +66,11 @@
     body {
       background-color: var(--bg);
       background-image:
-        radial-gradient(ellipse 80% 50% at 50% -15%, rgba(56, 189, 248, 0.16), transparent 70%),
-        radial-gradient(circle at 10% 35%, rgba(129, 140, 248, 0.08), transparent 45%),
-        radial-gradient(circle at 90% 75%, rgba(45, 212, 191, 0.08), transparent 45%);
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.85 0 0 0 0 0.6 0 0 0 0 0.4 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+        radial-gradient(ellipse 90% 45% at 50% 115%, rgba(255, 106, 26, 0.28), transparent 70%),
+        radial-gradient(ellipse 70% 40% at 50% -10%, rgba(255, 184, 77, 0.10), transparent 70%),
+        radial-gradient(circle at 8% 40%, rgba(217, 72, 15, 0.08), transparent 45%),
+        radial-gradient(circle at 92% 70%, rgba(45, 212, 191, 0.05), transparent 45%);
       background-attachment: fixed;
       color: var(--text);
       font-family: var(--font-sans);
@@ -100,13 +113,13 @@
       width: 36px;
       height: 36px;
       border-radius: 10px;
-      background: linear-gradient(135deg, var(--cyan), var(--indigo));
+      background: linear-gradient(135deg, var(--ember), var(--indigo));
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 800;
       font-size: 18px;
-      box-shadow: 0 0 18px rgba(56, 189, 248, 0.35);
+      box-shadow: 0 0 18px rgba(255, 122, 40, 0.35);
     }
 
     .brand-text {
@@ -153,7 +166,7 @@
       font-weight: 600;
       color: var(--text-muted);
       text-decoration: none;
-      background: rgba(30, 41, 59, 0.45);
+      background: rgba(46, 37, 31, 0.45);
       border: 1px solid var(--border);
       white-space: nowrap;
       transition: all 0.2s ease;
@@ -161,21 +174,21 @@
 
     .stage-pill:hover, .stage-pill.active {
       color: var(--text);
-      border-color: var(--cyan);
-      background: rgba(56, 189, 248, 0.14);
+      border-color: var(--ember);
+      background: rgba(255, 122, 40, 0.14);
     }
 
     .stage-num {
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: rgba(148, 163, 184, 0.2);
+      background: rgba(214, 170, 120, 0.2);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       font-size: 10px;
       font-family: var(--font-mono);
-      color: var(--cyan);
+      color: var(--ember);
     }
 
     .back-link {
@@ -191,7 +204,7 @@
     }
 
     .back-link:hover {
-      color: var(--cyan);
+      color: var(--ember);
       border-color: var(--border-highlight);
     }
 
@@ -231,7 +244,7 @@
       letter-spacing: -0.03em;
       line-height: 1.15;
       margin-bottom: 18px;
-      background: linear-gradient(135deg, #ffffff 25%, #7dd3fc 65%, #c084fc 100%);
+      background: linear-gradient(180deg, #fff4d6 10%, #ffd27a 45%, #ff8a2b 75%, #d9480f 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -267,7 +280,7 @@
       font-family: var(--font-mono);
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: var(--cyan);
+      color: var(--ember);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -280,7 +293,7 @@
     }
 
     .pipe-card {
-      background: rgba(15, 23, 42, 0.85);
+      background: rgba(30, 24, 20, 0.85);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       padding: 12px;
@@ -294,15 +307,15 @@
     }
 
     .pipe-card:hover {
-      border-color: var(--cyan);
+      border-color: var(--ember);
       transform: translateY(-2px);
-      background: rgba(30, 41, 59, 0.85);
+      background: rgba(46, 37, 31, 0.85);
     }
 
     .pipe-step-label {
       font-size: 11px;
       font-family: var(--font-mono);
-      color: var(--cyan);
+      color: var(--ember);
       font-weight: 600;
     }
 
@@ -356,9 +369,9 @@
       font-family: var(--font-mono);
       font-size: 12px;
       font-weight: 600;
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--cyan);
-      border: 1px solid rgba(56, 189, 248, 0.3);
+      background: rgba(255, 122, 40, 0.15);
+      color: var(--ember);
+      border: 1px solid rgba(255, 122, 40, 0.3);
     }
 
     .analogy-badge {
@@ -386,7 +399,7 @@
 
     /* Data Science Callout Box */
     .ds-callout {
-      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9));
+      background: linear-gradient(135deg, rgba(46, 37, 31, 0.7), rgba(30, 24, 20, 0.9));
       border-left: 4px solid var(--teal);
       border-radius: 0 var(--radius-md) var(--radius-md) 0;
       padding: 16px 20px;
@@ -426,7 +439,7 @@
     }
 
     .panel {
-      background: rgba(9, 13, 26, 0.75);
+      background: rgba(22, 18, 15, 0.75);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       padding: 20px;
@@ -456,8 +469,8 @@
     .tokenizer-input {
       width: 100%;
       min-height: 92px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(56, 189, 248, 0.35);
+      background: rgba(30, 24, 20, 0.9);
+      border: 1px solid rgba(255, 122, 40, 0.35);
       border-radius: var(--radius-sm);
       padding: 12px 14px;
       color: var(--text);
@@ -469,8 +482,8 @@
     }
 
     .tokenizer-input:focus {
-      border-color: var(--cyan);
-      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+      border-color: var(--ember);
+      box-shadow: 0 0 0 3px rgba(255, 122, 40, 0.15);
     }
 
     .preset-row {
@@ -480,7 +493,7 @@
     }
 
     .preset-btn {
-      background: rgba(30, 41, 59, 0.75);
+      background: rgba(46, 37, 31, 0.75);
       border: 1px solid var(--border);
       color: var(--text-secondary);
       padding: 6px 11px;
@@ -493,8 +506,8 @@
     }
 
     .preset-btn:hover, .preset-btn.active {
-      background: rgba(56, 189, 248, 0.16);
-      border-color: var(--cyan);
+      background: rgba(255, 122, 40, 0.16);
+      border-color: var(--ember);
       color: #fff;
     }
 
@@ -503,7 +516,7 @@
       flex-wrap: wrap;
       gap: 6px;
       padding: 14px;
-      background: rgba(6, 9, 19, 0.85);
+      background: rgba(13, 10, 8, 0.85);
       border-radius: var(--radius-sm);
       border: 1px solid var(--border);
       min-height: 88px;
@@ -548,7 +561,7 @@
     }
 
     .stat-box {
-      background: rgba(15, 23, 42, 0.75);
+      background: rgba(30, 24, 20, 0.75);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 10px 12px;
@@ -559,7 +572,7 @@
       font-size: 20px;
       font-weight: 800;
       font-family: var(--font-mono);
-      color: var(--cyan);
+      color: var(--ember);
     }
 
     .stat-lbl {
@@ -590,15 +603,15 @@
     }
 
     table.data-table th {
-      background: rgba(30, 41, 59, 0.8);
-      color: var(--cyan);
+      background: rgba(46, 37, 31, 0.8);
+      color: var(--ember);
       font-weight: 600;
       font-size: 11px;
       text-transform: uppercase;
     }
 
     table.data-table tr:hover td {
-      background: rgba(56, 189, 248, 0.06);
+      background: rgba(255, 122, 40, 0.06);
     }
 
     /* Stage 2: Three.js 3D Embedding Canvas */
@@ -606,7 +619,7 @@
       position: relative;
       width: 100%;
       height: 430px;
-      background: radial-gradient(circle at 50% 50%, #111c38 0%, #070b16 100%);
+      background: radial-gradient(circle at 50% 60%, #2a1a10 0%, #120c08 70%, #0a0705 100%);
       border-radius: var(--radius-md);
       border: 1px solid var(--border);
       overflow: hidden;
@@ -640,7 +653,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      background: rgba(6, 9, 19, 0.8);
+      background: rgba(13, 10, 8, 0.8);
       padding: 6px 10px;
       border-radius: 8px;
       border: 1px solid var(--border);
@@ -663,7 +676,7 @@
     }
 
     .canvas-help-pill {
-      background: rgba(6, 9, 19, 0.8);
+      background: rgba(13, 10, 8, 0.8);
       padding: 5px 10px;
       border-radius: 999px;
       font-size: 11px;
@@ -673,7 +686,7 @@
     }
 
     .vector-math-box {
-      background: rgba(15, 23, 42, 0.9);
+      background: rgba(30, 24, 20, 0.9);
       border: 1px solid rgba(192, 132, 252, 0.35);
       border-radius: var(--radius-sm);
       padding: 14px;
@@ -692,7 +705,7 @@
     .math-term {
       padding: 4px 9px;
       border-radius: 6px;
-      background: rgba(30, 41, 59, 0.9);
+      background: rgba(46, 37, 31, 0.9);
       border: 1px solid var(--border);
       font-weight: 600;
     }
@@ -722,7 +735,7 @@
 
     .feature-bar-track {
       height: 8px;
-      background: rgba(30, 41, 59, 0.9);
+      background: rgba(46, 37, 31, 0.9);
       border-radius: 999px;
       overflow: hidden;
     }
@@ -739,7 +752,7 @@
       flex-wrap: wrap;
       gap: 8px;
       padding: 14px;
-      background: rgba(6, 9, 19, 0.85);
+      background: rgba(13, 10, 8, 0.85);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
     }
@@ -747,7 +760,7 @@
     .attn-word-btn {
       padding: 7px 12px;
       border-radius: 8px;
-      background: rgba(30, 41, 59, 0.7);
+      background: rgba(46, 37, 31, 0.7);
       border: 1px solid var(--border);
       color: var(--text);
       font-family: var(--font-mono);
@@ -759,19 +772,19 @@
     }
 
     .attn-word-btn:hover {
-      border-color: var(--cyan);
+      border-color: var(--ember);
     }
 
     .attn-word-btn.selected {
-      background: rgba(56, 189, 248, 0.22);
-      border-color: var(--cyan);
-      box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+      background: rgba(255, 122, 40, 0.22);
+      border-color: var(--ember);
+      box-shadow: 0 0 14px rgba(255, 122, 40, 0.35);
     }
 
     #attention-svg-container {
       width: 100%;
       min-height: 290px;
-      background: rgba(6, 9, 19, 0.85);
+      background: rgba(13, 10, 8, 0.85);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       overflow-x: auto;
@@ -797,7 +810,7 @@
 
     .slider-val {
       font-family: var(--font-mono);
-      color: var(--cyan);
+      color: var(--ember);
     }
 
     input[type="range"] {
@@ -806,7 +819,7 @@
       width: 100%;
       height: 7px;
       border-radius: 999px;
-      background: rgba(30, 41, 59, 0.95);
+      background: rgba(46, 37, 31, 0.95);
       border: 1px solid var(--border);
       outline: none;
     }
@@ -817,16 +830,16 @@
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: var(--cyan);
+      background: var(--ember);
       cursor: pointer;
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      box-shadow: 0 0 10px rgba(255, 122, 40, 0.6);
     }
 
     .action-btn {
       padding: 10px 16px;
       border-radius: 8px;
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      background: linear-gradient(135deg, #0284c7, #0d9488);
+      border: 1px solid rgba(255, 122, 40, 0.4);
+      background: var(--molten);
       color: #fff;
       font-weight: 700;
       font-size: 13.5px;
@@ -841,24 +854,24 @@
 
     .action-btn:hover {
       transform: translateY(-1px);
-      box-shadow: 0 8px 20px rgba(14, 165, 233, 0.35);
+      box-shadow: 0 8px 20px rgba(255, 106, 26, 0.35);
     }
 
     .action-btn.secondary {
-      background: rgba(30, 41, 59, 0.85);
+      background: rgba(46, 37, 31, 0.85);
       border-color: var(--border);
       color: var(--text-secondary);
     }
 
     .action-btn.secondary:hover {
-      border-color: var(--cyan);
+      border-color: var(--ember);
       color: #fff;
     }
 
     .generated-story-box {
       padding: 14px;
       border-radius: var(--radius-sm);
-      background: rgba(6, 9, 19, 0.9);
+      background: rgba(13, 10, 8, 0.9);
       border: 1px solid var(--border);
       font-size: 15px;
       line-height: 1.7;
@@ -870,8 +883,8 @@
       padding: 1px 5px;
       margin: 0 2px;
       border-radius: 4px;
-      background: rgba(56, 189, 248, 0.16);
-      border-bottom: 2px solid var(--cyan);
+      background: rgba(255, 122, 40, 0.16);
+      border-bottom: 2px solid var(--ember);
       font-family: var(--font-mono);
       font-size: 14px;
       animation: popIn 0.25s ease-out;
@@ -897,7 +910,7 @@
     }
 
     .train-card {
-      background: rgba(9, 13, 26, 0.85);
+      background: rgba(22, 18, 15, 0.85);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       padding: 20px;
@@ -909,8 +922,8 @@
     }
 
     .train-card.active, .train-card:hover {
-      border-color: var(--cyan);
-      background: rgba(20, 30, 56, 0.85);
+      border-color: var(--ember);
+      background: rgba(52, 36, 26, 0.85);
     }
 
     .model-cards-grid {
@@ -921,7 +934,7 @@
     }
 
     .model-card {
-      background: rgba(9, 13, 26, 0.8);
+      background: rgba(22, 18, 15, 0.8);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       padding: 20px;
@@ -944,6 +957,296 @@
       text-align: center;
       color: var(--text-muted);
       font-size: 13.5px;
+    }
+
+    /* ==================================================================
+       FOUNDRY THEME LAYER (presentation only)
+       Forged-steel plates, rivets, stamped labels & ember glow.
+       ================================================================== */
+    ::selection {
+      background: rgba(255, 122, 40, 0.45);
+      color: var(--white-hot);
+    }
+
+    html {
+      scrollbar-color: #5a3a24 #120d0a;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      color: var(--gold);
+      background: rgba(255, 184, 77, 0.08);
+      border: 1px solid rgba(255, 184, 77, 0.18);
+      padding: 0 5px;
+      border-radius: 3px;
+    }
+
+    strong {
+      color: var(--white-hot);
+    }
+
+    .navbar {
+      background:
+        linear-gradient(180deg, rgba(28, 21, 17, 0.94), rgba(14, 10, 8, 0.94));
+      border-bottom: 1px solid rgba(255, 122, 40, 0.25);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 8px 24px -12px rgba(255, 106, 26, 0.35);
+    }
+
+    .brand-icon {
+      border-radius: 4px;
+      background: var(--molten);
+      color: #2a1206;
+      box-shadow:
+        0 0 0 1px rgba(255, 210, 122, 0.4),
+        0 0 22px rgba(255, 106, 26, 0.55),
+        inset 0 -3px 0 rgba(120, 30, 0, 0.35);
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--white-hot);
+    }
+
+    .brand-sub {
+      color: var(--gold);
+      opacity: 0.75;
+      letter-spacing: 0.04em;
+    }
+
+    .stage-pill,
+    .back-link {
+      font-family: var(--font-display);
+      font-size: 13.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-radius: 3px;
+      background: linear-gradient(180deg, rgba(58, 46, 38, 0.6), rgba(30, 24, 20, 0.6));
+    }
+
+    .stage-pill:hover,
+    .stage-pill.active {
+      color: var(--white-hot);
+      background: linear-gradient(180deg, rgba(255, 122, 40, 0.28), rgba(217, 72, 15, 0.14));
+      box-shadow: 0 0 14px rgba(255, 106, 26, 0.25);
+    }
+
+    .stage-num {
+      border-radius: 2px;
+      background: rgba(255, 122, 40, 0.18);
+      color: var(--gold);
+    }
+
+    .audience-badge {
+      border-radius: 3px;
+      background: rgba(255, 184, 77, 0.08);
+      border: 1px dashed rgba(255, 184, 77, 0.45);
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(34px, 6vw, 64px);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
+      line-height: 1.02;
+      filter: drop-shadow(0 0 22px rgba(255, 106, 26, 0.35));
+    }
+
+    .pipeline-bar,
+    .module-card {
+      position: relative;
+      border-radius: 6px;
+      background: var(--steel-plate);
+      border: 1px solid rgba(214, 170, 120, 0.16);
+      border-top: 2px solid rgba(255, 122, 40, 0.55);
+    }
+
+    /* Rivets in the four corners of every steel plate */
+    .pipeline-bar::before,
+    .module-card::before {
+      content: "";
+      position: absolute;
+      inset: 10px;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 4px 4px, #8a7464 0 2px, #2a211b 2.5px, transparent 3.5px) top left / 9px 9px no-repeat,
+        radial-gradient(circle at 4px 4px, #8a7464 0 2px, #2a211b 2.5px, transparent 3.5px) top right / 9px 9px no-repeat,
+        radial-gradient(circle at 4px 4px, #8a7464 0 2px, #2a211b 2.5px, transparent 3.5px) bottom left / 9px 9px no-repeat,
+        radial-gradient(circle at 4px 4px, #8a7464 0 2px, #2a211b 2.5px, transparent 3.5px) bottom right / 9px 9px no-repeat;
+      opacity: 0.8;
+    }
+
+    .pipeline-title,
+    .pipe-step-label {
+      color: var(--gold);
+    }
+
+    .pipe-card {
+      border-radius: 4px;
+      background: linear-gradient(180deg, rgba(46, 37, 31, 0.9), rgba(22, 18, 15, 0.9));
+      border-bottom: 2px solid rgba(255, 122, 40, 0.25);
+    }
+
+    .pipe-card:hover {
+      border-bottom-color: var(--ember);
+      box-shadow: 0 10px 24px -10px rgba(255, 106, 26, 0.5);
+      background: linear-gradient(180deg, rgba(64, 44, 32, 0.95), rgba(30, 22, 17, 0.95));
+    }
+
+    .pipe-step-name {
+      font-family: var(--font-display);
+      font-size: 17px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .module-header {
+      border-bottom: 1px solid rgba(214, 170, 120, 0.14);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+    }
+
+    .module-title {
+      font-family: var(--font-display);
+      font-size: clamp(26px, 3.6vw, 36px);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.015em;
+      line-height: 1.1;
+      color: var(--white-hot);
+    }
+
+    .step-badge {
+      border-radius: 2px;
+      background: var(--molten);
+      color: #2a1206;
+      border: none;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      box-shadow: 0 0 12px rgba(255, 106, 26, 0.3);
+    }
+
+    .analogy-badge {
+      border-radius: 2px;
+      border-style: dashed;
+    }
+
+    .ds-callout {
+      border-radius: 0 4px 4px 0;
+      background: linear-gradient(90deg, rgba(45, 212, 191, 0.07), rgba(22, 18, 15, 0.85) 45%);
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(20, 16, 13, 0.92), rgba(13, 10, 8, 0.92));
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.45);
+    }
+
+    .panel-title {
+      font-family: var(--font-display);
+      font-size: 15.5px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .panel-title .mono-hint {
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .stat-box {
+      background: linear-gradient(180deg, rgba(46, 37, 31, 0.8), rgba(22, 18, 15, 0.8));
+    }
+
+    .stat-val {
+      color: var(--gold);
+      text-shadow: 0 0 12px rgba(255, 184, 77, 0.45);
+    }
+
+    .preset-btn {
+      border-radius: 3px;
+    }
+
+    .preset-btn:hover,
+    .preset-btn.active {
+      color: var(--white-hot);
+      box-shadow: inset 0 -2px 0 var(--ember);
+    }
+
+    input[type="range"] {
+      background: linear-gradient(90deg, #3a2a1e, #5a3a24);
+      border-color: rgba(0, 0, 0, 0.6);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      border-radius: 3px;
+      background: var(--molten);
+      box-shadow: 0 0 12px rgba(255, 122, 40, 0.75);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border: none;
+      border-radius: 3px;
+      background: var(--molten);
+      box-shadow: 0 0 12px rgba(255, 122, 40, 0.75);
+      cursor: pointer;
+    }
+
+    .action-btn {
+      border-radius: 3px;
+      color: #2a1206;
+      font-family: var(--font-display);
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-shadow: 0 1px 0 rgba(255, 230, 190, 0.4);
+      box-shadow: inset 0 -3px 0 rgba(120, 30, 0, 0.35);
+    }
+
+    .action-btn.secondary {
+      text-shadow: none;
+      box-shadow: none;
+    }
+
+    .gen-token {
+      border-radius: 2px;
+      color: var(--white-hot);
+    }
+
+    .train-card,
+    .model-card {
+      border-radius: 4px;
+      background: linear-gradient(180deg, rgba(36, 29, 24, 0.9), rgba(18, 14, 12, 0.9));
+    }
+
+    .train-card.active,
+    .train-card:hover {
+      box-shadow: 0 0 0 1px rgba(255, 122, 40, 0.35), 0 12px 30px -14px rgba(255, 106, 26, 0.55);
+    }
+
+    .model-card h4 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: 0.02em;
+    }
+
+    footer {
+      border-top: 1px solid rgba(255, 122, 40, 0.25);
+      background: linear-gradient(180deg, transparent, rgba(255, 106, 26, 0.06));
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
     }
 
     /* Mobile Responsiveness */
@@ -1221,7 +1524,7 @@
           <!-- Right: Word Feature Inspector & Vector Analogy Calculator -->
           <div class="panel">
             <div class="panel-title">
-              <span>🔍 Selected Word Feature Row: <strong id="selected-word-label" style="color:var(--cyan)">Queen</strong></span>
+              <span>🔍 Selected Word Feature Row: <strong id="selected-word-label" style="color:var(--ember)">Queen</strong></span>
               <span id="selected-word-coords" class="mono-hint">[x: -2.4, y: 3.1, z: 1.8]</span>
             </div>
 
@@ -1305,7 +1608,7 @@
             <div id="attention-sentence-bar" class="attention-sentence-bar"></div>
 
             <div class="panel-title" style="margin-top: 6px;">
-              <span>2️⃣ Top Attention Weights for <strong id="attn-focus-word" style="color:var(--cyan)">"it"</strong></span>
+              <span>2️⃣ Top Attention Weights for <strong id="attn-focus-word" style="color:var(--ember)">"it"</strong></span>
               <span class="mono-hint">Sum = 100%</span>
             </div>
             <div id="attention-weights-bars" class="feature-bars"></div>
@@ -1409,7 +1712,7 @@
             <div class="chart-wrap">
               <canvas id="prob-chart"></canvas>
             </div>
-            <div id="sampling-explanation" style="font-size: 12.5px; color: var(--text-secondary); background: rgba(15, 23, 42, 0.8); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);">
+            <div id="sampling-explanation" style="font-size: 12.5px; color: var(--text-secondary); background: rgba(30, 24, 20, 0.8); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);">
               Adjust the <strong>Temperature</strong> and <strong>Top-P</strong> sliders on the left to see how the probability distribution shifts before the model rolls the dice!
             </div>
           </div>
@@ -1477,7 +1780,7 @@
             <span>🔬 Live Comparison: How Each Training Phase Responds to the Same Prompt</span>
             <span class="mono-hint">Prompt: "Explain why our Q3 sales dipped in 2 bullet points."</span>
           </div>
-          <div id="training-response-preview" style="padding: 16px; background: rgba(6, 9, 19, 0.9); border-radius: 10px; border: 1px solid var(--border); font-size: 14.5px;">
+          <div id="training-response-preview" style="padding: 16px; background: rgba(13, 10, 8, 0.9); border-radius: 10px; border: 1px solid var(--border); font-size: 14.5px;">
           </div>
         </div>
 
@@ -1523,7 +1826,7 @@
         <strong>TokenForge</strong> — Interactive Visual Guide to Large Language Models • Built with Three.js, D3.js & Chart.js
       </p>
       <p style="margin-top: 6px;">
-        <a href="../" style="color: var(--cyan); text-decoration: none;">← Back to Jose Marquez AI Web Experiments</a>
+        <a href="../" style="color: var(--ember); text-decoration: none;">← Back to Jose Marquez AI Web Experiments</a>
       </p>
     </div>
   </footer>
@@ -1536,7 +1839,7 @@
        STAGE 1: REALISTIC BPE SUBWORD TOKENIZER ENGINE
        ========================================================================= */
     const TOKEN_PALETTE = [
-      { bg: 'rgba(56, 189, 248, 0.22)', border: 'rgba(56, 189, 248, 0.55)' },
+      { bg: 'rgba(255, 122, 40, 0.22)', border: 'rgba(255, 122, 40, 0.55)' },
       { bg: 'rgba(45, 212, 191, 0.22)', border: 'rgba(45, 212, 191, 0.55)' },
       { bg: 'rgba(192, 132, 252, 0.22)', border: 'rgba(192, 132, 252, 0.55)' },
       { bg: 'rgba(251, 191, 36, 0.22)', border: 'rgba(251, 191, 36, 0.55)' },
@@ -1668,7 +1971,7 @@
         `;
         const showDetail = () => {
           tokenHoverDetail.textContent = `Token [${idx}]: "${t.raw}" → Vocab ID #${t.id} (${t.type})`;
-          tokenHoverDetail.style.color = '#38bdf8';
+          tokenHoverDetail.style.color = '#ff7a28';
         };
         chip.addEventListener('mouseenter', showDetail);
         chip.addEventListener('click', showDetail);
@@ -1686,7 +1989,7 @@
           <td>#${i + 1}</td>
           <td><strong style="color:#fff">${t.display.replace(/</g, '&lt;')}</strong></td>
           <td>${t.type}</td>
-          <td style="color:var(--cyan)">${t.id}</td>
+          <td style="color:var(--ember)">${t.id}</td>
         </tr>
       `).join('');
     }
@@ -1763,8 +2066,8 @@
       canvas.width = 256;
       canvas.height = 72;
       const ctx = canvas.getContext('2d');
-      ctx.font = 'bold 28px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = 'rgba(6, 9, 19, 0.78)';
+      ctx.font = 'bold 28px "Barlow Condensed", "Barlow", sans-serif';
+      ctx.fillStyle = 'rgba(20, 14, 10, 0.82)';
       const metrics = ctx.measureText(text);
       const pad = 18;
       const w = metrics.width + pad * 2;
@@ -1807,13 +2110,13 @@
       controls.minDistance = 3;
 
       // Subtle 3D coordinate grid & axes
-      const grid = new THREE.GridHelper(10, 10, 0x1e293b, 0x1e293b);
+      const grid = new THREE.GridHelper(10, 10, 0x3a2a1e, 0x2a2018);
       grid.position.y = -3.6;
       scene.add(grid);
 
       // Ambient + point light
       scene.add(new THREE.AmbientLight(0xffffff, 0.85));
-      const pLight = new THREE.PointLight(0x38bdf8, 1.2, 30);
+      const pLight = new THREE.PointLight(0xff9a50, 1.2, 30);
       pLight.position.set(5, 8, 6);
       scene.add(pLight);
 
@@ -1909,7 +2212,7 @@
       barsEl.innerHTML = FEATURE_NAMES.map((fname, idx) => {
         const val = wordObj.features[idx];
         const pct = Math.round(((val + 1) / 2) * 100);
-        const barColor = val >= 0 ? '#38bdf8' : '#fb7185';
+        const barColor = val >= 0 ? '#ff7a28' : '#2dd4bf';
         return `
           <div class="feature-row">
             <span style="color:var(--text-secondary)">${fname}</span>
@@ -2067,7 +2370,7 @@
         btn.className = 'attn-word-btn' + (idx === currentFocusTokenIdx ? ' selected' : '');
         // Mark preset interesting tokens with a subtle dot
         const hasPreset = Boolean(sentObj.weights[idx]);
-        btn.innerHTML = `${tok}${hasPreset ? ' <span style="color:var(--cyan);font-size:10px;">★</span>' : ''}`;
+        btn.innerHTML = `${tok}${hasPreset ? ' <span style="color:var(--ember);font-size:10px;">★</span>' : ''}`;
         btn.addEventListener('click', () => {
           currentFocusTokenIdx = idx;
           renderAttentionModule();
@@ -2091,9 +2394,9 @@
           <div class="feature-row">
             <span style="font-family:var(--font-mono); color:#fff">"${item.word}"</span>
             <div class="feature-bar-track">
-              <div class="feature-bar-fill" style="width:${pct}%; background:linear-gradient(90deg, #38bdf8, #2dd4bf)"></div>
+              <div class="feature-bar-fill" style="width:${pct}%; background:linear-gradient(90deg, #ff6a1a, #ffb84d)"></div>
             </div>
-            <span style="font-family:var(--font-mono); text-align:right; color:var(--cyan)">${pct}%</span>
+            <span style="font-family:var(--font-mono); text-align:right; color:var(--ember)">${pct}%</span>
           </div>
         `;
       }).join('');
@@ -2135,7 +2438,7 @@
         svg.append('path')
           .attr('d', pathData)
           .attr('fill', 'none')
-          .attr('stroke', targetIdx === focusIdx ? '#c084fc' : '#38bdf8')
+          .attr('stroke', targetIdx === focusIdx ? '#c084fc' : '#ff7a28')
           .attr('stroke-width', Math.max(2, weight * 14))
           .attr('stroke-opacity', Math.min(0.95, 0.25 + weight * 0.9))
           .attr('stroke-linecap', 'round');
@@ -2176,21 +2479,21 @@
         .attr('height', 30)
         .attr('rx', 7)
         .attr('fill', (d, i) => {
-          if (i === focusIdx) return 'rgba(56, 189, 248, 0.3)';
+          if (i === focusIdx) return 'rgba(255, 122, 40, 0.3)';
           if (weightsMap[i]) return `rgba(45, 212, 191, ${0.12 + weightsMap[i] * 0.45})`;
-          return 'rgba(15, 23, 42, 0.85)';
+          return 'rgba(30, 24, 20, 0.85)';
         })
         .attr('stroke', (d, i) => {
-          if (i === focusIdx) return '#38bdf8';
+          if (i === focusIdx) return '#ff7a28';
           if (weightsMap[i]) return '#2dd4bf';
-          return 'rgba(148, 163, 184, 0.25)';
+          return 'rgba(214, 170, 120, 0.25)';
         })
         .attr('stroke-width', (d, i) => i === focusIdx ? 2 : 1);
 
       nodes.append('text')
         .attr('text-anchor', 'middle')
         .attr('dy', '0.32em')
-        .attr('fill', '#f8fafc')
+        .attr('fill', '#f7efe6')
         .attr('font-family', 'JetBrains Mono, monospace')
         .attr('font-size', '12px')
         .attr('font-weight', (d, i) => (i === focusIdx || weightsMap[i]) ? '700' : '400')
@@ -2355,8 +2658,8 @@
 
       const labels = dist.map(d => `"${d.token.trim()}"`);
       const dataVals = dist.map(d => +(d.prob * 100).toFixed(1));
-      const bgColors = dist.map(d => d.included ? 'rgba(45, 212, 191, 0.75)' : 'rgba(148, 163, 184, 0.18)');
-      const borderColors = dist.map(d => d.included ? '#2dd4bf' : 'rgba(148, 163, 184, 0.35)');
+      const bgColors = dist.map(d => d.included ? 'rgba(45, 212, 191, 0.75)' : 'rgba(214, 170, 120, 0.18)');
+      const borderColors = dist.map(d => d.included ? '#2dd4bf' : 'rgba(214, 170, 120, 0.35)');
 
       if (!probChart) {
         const ctx = document.getElementById('prob-chart').getContext('2d');
@@ -2392,12 +2695,12 @@
             scales: {
               x: {
                 max: 100,
-                grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                ticks: { color: '#94a3b8', callback: v => v + '%' }
+                grid: { color: 'rgba(214, 170, 120, 0.1)' },
+                ticks: { color: '#a8968a', callback: v => v + '%' }
               },
               y: {
                 grid: { display: false },
-                ticks: { color: '#f8fafc', font: { family: 'JetBrains Mono', size: 12 } }
+                ticks: { color: '#f7efe6', font: { family: 'JetBrains Mono', size: 12 } }
               }
             }
           }
@@ -2413,7 +2716,7 @@
       // Render story box
       const storyBox = document.getElementById('generated-story-box');
       const chipsHtml = generatedTokens.map(t => `<span class="gen-token">${t}</span>`).join('');
-      storyBox.innerHTML = `<span>${scenario.basePrompt}</span>${chipsHtml}<span style="color:var(--cyan); animation: pulse 1s infinite;">▊</span>`;
+      storyBox.innerHTML = `<span>${scenario.basePrompt}</span>${chipsHtml}<span style="color:var(--ember); animation: pulse 1s infinite;">▊</span>`;
       document.getElementById('loop-step-counter').textContent = `Step ${currentGenStep} / ${scenario.steps.length}`;
     }
 
@@ -2501,7 +2804,7 @@
         <div style="font-size:12px; font-family:var(--font-mono); color:${item.color}; margin-bottom:6px; font-weight:700;">
           ${item.title}
         </div>
-        <div style="white-space:pre-line; color:#fff; font-family:var(--font-sans); padding:10px 12px; background:rgba(15,23,42,0.85); border-left:3px solid ${item.color}; border-radius:6px; margin-bottom:8px;">${item.text}</div>
+        <div style="white-space:pre-line; color:#fff; font-family:var(--font-sans); padding:10px 12px; background:rgba(30,24,20,0.85); border-left:3px solid ${item.color}; border-radius:6px; margin-bottom:8px;">${item.text}</div>
         <div style="font-size:12.5px; color:var(--text-muted);">${item.note}</div>
       `;
     }
