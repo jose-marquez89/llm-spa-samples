@@ -23,6 +23,7 @@ Current themes (keep them consistent when editing):
 | --- | --- | --- |
 | `tokenforge/` | How LLMs work (tokens → embeddings → attention → sampling) | **"The Foundry"** — dark blackened-iron background with hammered-metal noise, ember-orange / molten-gold accents, quench-steel teal as secondary, riveted steel-plate cards, stamped labels. Fonts: Barlow / Barlow Condensed (uppercase display) + JetBrains Mono. |
 | `anatonurse/` | 3D anatomy & nursing assessment atlas | **"Clinical Chart"** — light ECG-paper grid background, white charting-paper panels, ceil-blue "scrubs" accents, medical-cross red, bedside-monitor style vitals strip. Fonts: Atkinson Hyperlegible (legibility-focused) + IBM Plex Mono. |
+| `cardiotrace/` | EKG & bedside telemetry interpretation (Primer → Basic → Intermediate → Advanced) | **"Telemetry Central & Thermal Strip"** — ICU/telemetry central station dark phosphor-slate bezels (`#070d12` / `#0d1720`) paired with authentic 25mm/s pink/red millimeter thermal ECG paper strips (`#fff8f6` with `#d13b49` 5mm & `#e26270` 1mm grids), phosphor waveform green (`#00f57a`), SpO2 cyan, NIBP amber, alarm crimson, and draggable gold electronic calipers. Fonts: Atkinson Hyperlegible + Chakra Petch + IBM Plex Mono. |
 
 Each app's theme is documented in a comment at the top of its `<style>` block and most of the
 theme flourishes live in a clearly labelled "THEME LAYER" section placed *before* the
