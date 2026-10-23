@@ -1,0 +1,4901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linux 95 — WebContainer &amp; Comlink Micro-OS Workstation</title>
+  <meta name="description" content="An interactive 1995 Linux workstation emulator powered by a Comlink Web Worker POSIX micro-kernel and StackBlitz WebContainer API bridge, wrapped in a tactile Trinitron CRT and FVWM95 desktop environment." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600&family=IBM+Plex+Mono:wght@400;500;600;700&family=VT323&display=swap" rel="stylesheet">
+  <!-- Comlink (GoogleChromeLabs) for ergonomic Web Worker RPC kernel communication -->
+  <script src="https://cdn.jsdelivr.net/npm/comlink@4.4.1/dist/umd/comlink.min.js"></script>
+
+  <style>
+    /* ------------------------------------------------------------------
+       THEME: "1995 Beige CRT Workstation & FVWM95 / Linux 95 Desktop"
+       Tactile putty-beige ABS monitor & tower casing (#d8d2c5 / #c4bcac)
+       in a dimly lit 90s computer den (#0b0d12), paired with an authentic
+       curved Trinitron CRT glass screen, Award BIOS / LILO boot sequence,
+       and pixel-crisp 3D beveled Windows 95 / FVWM95 desktop (#008080
+       teal desktop, #c0c0c0 win-gray surfaces, #000080 navy titlebars).
+       Fonts: VT323 (BIOS/VGA terminal/LEDs), IBM Plex Mono (shell/code),
+       Chakra Petch (hardware silkscreen badges), and Tahoma/MS Sans Serif
+       for classic 95 GUI controls.
+       ------------------------------------------------------------------ */
+    :root {
+      /* Room & Hardware Bezel Palette */
+      --room-bg: #0a0c10;
+      --room-glow: rgba(0, 145, 145, 0.14);
+      --beige-light: #e4dfd3;
+      --beige-main: #d5cfc1;
+      --beige-mid: #c2bba9;
+      --beige-dark: #9e9685;
+      --beige-shadow: #6e6759;
+      --bezel-inner: #1d2024;
+      --crt-glass-off: #090c0e;
+
+      /* Classic 1995 GUI (FVWM95 / Win95) Palette */
+      --desktop-bg: #008080;
+      --win-gray: #c0c0c0;
+      --win-gray-light: #dfdfdf;
+      --win-white: #ffffff;
+      --win-shadow: #808080;
+      --win-dark: #000000;
+      --title-active-start: #000080;
+      --title-active-end: #1084d0;
+      --title-inactive-start: #7f7f7f;
+      --title-inactive-end: #b5b5b5;
+      --title-text: #ffffff;
+      --selection-bg: #000080;
+      --selection-text: #ffffff;
+
+      /* Terminal & Phosphor Accents */
+      --phosphor-green: #33ff66;
+      --phosphor-amber: #ffb000;
+      --phosphor-cyan: #00e5ff;
+      --led-red: #ff2a2a;
+      --led-green: #22ff55;
+      --led-amber: #ffaa00;
+
+      /* Fonts */
+      --font-gui: 'Tahoma', 'MS Sans Serif', 'Geneva', sans-serif;
+      --font-vga: 'VT323', monospace;
+      --font-mono: 'IBM Plex Mono', monospace;
+      --font-badge: 'Chakra Petch', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    input, textarea, pre, code, .selectable {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      background-color: var(--room-bg);
+      background-image:
+        radial-gradient(ellipse 75% 60% at 50% 42%, var(--room-glow), transparent 75%),
+        radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.04), transparent 50%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 32px);
+      color: #e2e8f0;
+      font-family: var(--font-gui);
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Lab Utility Bar (outside the 90s monitor) */
+    .lab-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 8px 18px;
+      background: rgba(12, 15, 22, 0.92);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      z-index: 1000;
+    }
+
+    .lab-topbar-left,
+    .lab-topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .lab-back-link {
+      color: #94a3b8;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.15s ease;
+    }
+
+    .lab-back-link:hover {
+      color: #fff;
+      border-color: rgba(56, 189, 248, 0.45);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .lab-title-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: #cbd5e1;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+
+    .status-dot.online {
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+    }
+
+    .status-dot.amber {
+      background: #f59e0b;
+      box-shadow: 0 0 6px #f59e0b;
+    }
+
+    .status-dot.pulse {
+      animation: rpcPulse 0.35s ease;
+    }
+
+    @keyframes rpcPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.65); background: #38bdf8; box-shadow: 0 0 10px #38bdf8; }
+      100% { transform: scale(1); }
+    }
+
+    .lab-btn {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(30, 41, 59, 0.75);
+      color: #e2e8f0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+
+    .lab-btn:hover {
+      background: rgba(51, 65, 85, 0.9);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: #fff;
+    }
+
+    .lab-btn.primary {
+      background: rgba(13, 148, 136, 0.28);
+      border-color: rgba(45, 212, 191, 0.5);
+      color: #5eead4;
+    }
+
+    .lab-btn.primary:hover {
+      background: rgba(13, 148, 136, 0.45);
+    }
+
+    /* ------------------------------------------------------------------
+       WORKSTATION STAGE & CRT MONITOR HARDWARE BEZEL
+       ------------------------------------------------------------------ */
+    .workstation-stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 18px 20px;
+      position: relative;
+    }
+
+    /* Fullscreen OS Override */
+    body.fullscreen-os .lab-topbar {
+      padding: 4px 12px;
+    }
+    body.fullscreen-os .workstation-stage {
+      padding: 0;
+    }
+    body.fullscreen-os .crt-monitor-unit {
+      max-width: 100%;
+      width: 100%;
+      height: calc(100vh - 37px);
+      border-radius: 0;
+      padding: 0;
+      border: none;
+      box-shadow: none;
+      background: #000;
+    }
+    body.fullscreen-os .crt-top-vents,
+    body.fullscreen-os .crt-bezel-header,
+    body.fullscreen-os .crt-control-deck,
+    body.fullscreen-os .crt-stand-neck,
+    body.fullscreen-os .pc-tower-deck {
+      display: none !important;
+    }
+    body.fullscreen-os .crt-inner-frame {
+      border-radius: 0;
+      border: none;
+      padding: 0;
+      height: 100%;
+      box-shadow: none;
+    }
+    body.fullscreen-os .crt-screen {
+      border-radius: 0;
+      height: 100% !important;
+      aspect-ratio: unset;
+    }
+
+    /* Beige CRT Monitor Housing */
+    .crt-monitor-unit {
+      width: 100%;
+      max-width: 1180px;
+      background: linear-gradient(160deg, var(--beige-light) 0%, var(--beige-main) 45%, var(--beige-mid) 100%);
+      border-radius: 22px 22px 16px 16px;
+      padding: 14px 22px 14px;
+      border-top: 3px solid #f3efe6;
+      border-left: 3px solid #ebe5d8;
+      border-right: 4px solid var(--beige-dark);
+      border-bottom: 6px solid var(--beige-shadow);
+      box-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.85),
+        0 0 90px rgba(0, 128, 128, 0.12),
+        inset 0 2px 4px rgba(255, 255, 255, 0.65),
+        inset 0 -4px 8px rgba(80, 72, 58, 0.35);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Molded top ventilation slots */
+    .crt-top-vents {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      opacity: 0.45;
+    }
+
+    .crt-top-vents span {
+      width: 24px;
+      height: 3px;
+      border-radius: 2px;
+      background: #5c5649;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.7);
+    }
+
+    .crt-bezel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px 8px;
+      color: #464137;
+      font-family: var(--font-badge);
+    }
+
+    .brand-plate {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .trinitron-badge {
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #2f2b24;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .trinitron-bars {
+      display: inline-flex;
+      gap: 2px;
+    }
+
+    .trinitron-bars i {
+      display: inline-block;
+      width: 3px;
+      height: 12px;
+    }
+    .trinitron-bars i:nth-child(1) { background: #e11d48; }
+    .trinitron-bars i:nth-child(2) { background: #16a34a; }
+    .trinitron-bars i:nth-child(3) { background: #2563eb; }
+
+    .model-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #5e584b;
+      background: rgba(0, 0, 0, 0.06);
+      padding: 2px 7px;
+      border-radius: 3px;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .sticker-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .case-sticker {
+      font-family: var(--font-badge);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .sticker-pentium {
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+      color: #fff;
+      border: 1px solid #1d4ed8;
+    }
+
+    .sticker-linux {
+      background: linear-gradient(135deg, #facc15, #eab308);
+      color: #1c1917;
+      border: 1px solid #ca8a04;
+    }
+
+    /* Recessed Dark Inner Bezel holding the CRT Tube */
+    .crt-inner-frame {
+      background: linear-gradient(180deg, #17191c 0%, #24282d 50%, #141619 100%);
+      padding: 10px;
+      border-radius: 16px;
+      border-top: 4px solid #6b6456;
+      border-left: 4px solid #7d7566;
+      border-right: 4px solid #ece7dc;
+      border-bottom: 4px solid #f4f0e6;
+      box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.95);
+      position: relative;
+    }
+
+    /* The Actual CRT Glass Screen */
+    .crt-screen {
+      width: 100%;
+      height: 620px;
+      background: var(--crt-glass-off);
+      border-radius: 11px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.75);
+      transition: filter 0.2s ease;
+    }
+
+    /* Degauss Wobble Animation */
+    @keyframes degaussShake {
+      0% { transform: scale(1) skew(0deg, 0deg); filter: hue-rotate(0deg) saturate(1); }
+      15% { transform: scale(1.03, 0.96) skew(3deg, -2deg); filter: hue-rotate(140deg) saturate(3) contrast(1.4); }
+      30% { transform: scale(0.97, 1.03) skew(-3deg, 1.5deg); filter: hue-rotate(280deg) saturate(2.5); }
+      50% { transform: scale(1.015, 0.985) skew(1.5deg, -1deg); filter: hue-rotate(60deg) saturate(1.8); }
+      75% { transform: scale(0.995, 1.005) skew(-0.5deg, 0.5deg); filter: hue-rotate(-20deg) saturate(1.2); }
+      100% { transform: scale(1) skew(0deg, 0deg); filter: hue-rotate(0deg) saturate(1); }
+    }
+
+    .crt-screen.degaussing {
+      animation: degaussShake 0.85s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+    }
+
+    /* CRT Turn-On Beam Expansion */
+    @keyframes crtTurnOn {
+      0% {
+        transform: scale(0.005, 0.004);
+        filter: brightness(12) contrast(4);
+      }
+      35% {
+        transform: scale(1, 0.006);
+        filter: brightness(8) contrast(3);
+      }
+      75% {
+        transform: scale(1, 1.04);
+        filter: brightness(1.8) contrast(1.3);
+      }
+      100% {
+        transform: scale(1, 1);
+        filter: brightness(1) contrast(1);
+      }
+    }
+
+    .crt-beam-layer {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-origin: center center;
+    }
+
+    .crt-beam-layer.turning-on {
+      animation: crtTurnOn 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Scanline & Curvature Overlay */
+    .crt-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 900;
+      border-radius: 11px;
+    }
+
+    .crt-overlay.scanlines-subtle {
+      background:
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.16) 50%),
+        radial-gradient(circle at 50% 50%, transparent 72%, rgba(0, 0, 0, 0.38) 100%);
+      background-size: 100% 3px, 100% 100%;
+    }
+
+    .crt-overlay.scanlines-heavy {
+      background:
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.34) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03)),
+        radial-gradient(circle at 50% 50%, transparent 62%, rgba(0, 0, 0, 0.55) 100%);
+      background-size: 100% 4px, 6px 100%, 100% 100%;
+    }
+
+    .crt-overlay.scanlines-off {
+      background: radial-gradient(circle at 50% 50%, transparent 85%, rgba(0, 0, 0, 0.18) 100%);
+    }
+
+    /* Glass Glare Reflection */
+    .crt-glare {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 901;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.015) 22%, transparent 45%);
+    }
+
+    /* ------------------------------------------------------------------
+       HARDWARE CONTROL DECK (Monitor Bottom Strip + Floppy + Turbo + Power)
+       ------------------------------------------------------------------ */
+    .crt-control-deck {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: linear-gradient(180deg, #c7c0b0 0%, #bab2a0 100%);
+      border-radius: 8px;
+      border-top: 2px solid #9e9685;
+      border-left: 2px solid #9e9685;
+      border-right: 2px solid #e7e2d6;
+      border-bottom: 2px solid #efeae0;
+    }
+
+    .deck-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* 3.5" Floppy Drive Bay on Workstation Deck */
+    .floppy-bay {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #b0a896;
+      padding: 5px 10px;
+      border-radius: 5px;
+      border-top: 2px solid #7d7667;
+      border-left: 2px solid #7d7667;
+      border-right: 2px solid #ded9cd;
+      border-bottom: 2px solid #ded9cd;
+    }
+
+    .floppy-slot {
+      width: 96px;
+      height: 12px;
+      background: #1f2226;
+      border-top: 2px solid #0e1012;
+      border-bottom: 1px solid #d5cfc1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .floppy-disk-edge {
+      width: 84px;
+      height: 6px;
+      background: #2563eb;
+      border-radius: 1px;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
+    }
+
+    .floppy-bay.ejected .floppy-disk-edge {
+      transform: translateY(3px) scaleX(0.92);
+      opacity: 0.25;
+      background: #475569;
+    }
+
+    .floppy-eject-btn {
+      width: 18px;
+      height: 12px;
+      background: #7c7567;
+      border-top: 2px solid #d5cfc1;
+      border-left: 2px solid #d5cfc1;
+      border-right: 2px solid #4a453c;
+      border-bottom: 2px solid #4a453c;
+      cursor: pointer;
+      font-size: 8px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .floppy-eject-btn:active {
+      border-top-color: #4a453c;
+      border-left-color: #4a453c;
+    }
+
+    /* 7-Segment LED MHz Display & Turbo Button */
+    .turbo-module {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: #aca493;
+      padding: 4px 9px;
+      border-radius: 5px;
+      border-top: 2px solid #7d7667;
+      border-left: 2px solid #7d7667;
+      border-right: 2px solid #ded9cd;
+      border-bottom: 2px solid #ded9cd;
+    }
+
+    .seven-seg-box {
+      background: #111612;
+      border: 2px inset #5e584a;
+      padding: 1px 7px;
+      font-family: var(--font-vga);
+      font-size: 19px;
+      line-height: 1;
+      color: #22ff55;
+      text-shadow: 0 0 6px rgba(34, 255, 85, 0.8);
+      letter-spacing: 1px;
+      min-width: 48px;
+      text-align: right;
+    }
+
+    .seven-seg-box.slow {
+      color: #ffb000;
+      text-shadow: 0 0 6px rgba(255, 176, 0, 0.8);
+    }
+
+    /* LED Indicators */
+    .led-cluster {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-badge);
+      font-size: 10px;
+      font-weight: 700;
+      color: #3f3a30;
+      text-transform: uppercase;
+    }
+
+    .led-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .hw-led {
+      width: 9px;
+      height: 6px;
+      border-radius: 2px;
+      background: #332f29;
+      border: 1px solid rgba(0,0,0,0.45);
+      transition: background 0.08s ease, box-shadow 0.08s ease;
+    }
+
+    .hw-led.green-on {
+      background: var(--led-green);
+      box-shadow: 0 0 7px var(--led-green);
+    }
+
+    .hw-led.amber-on {
+      background: var(--led-amber);
+      box-shadow: 0 0 7px var(--led-amber);
+    }
+
+    .hw-led.red-on {
+      background: var(--led-red);
+      box-shadow: 0 0 8px var(--led-red);
+    }
+
+    /* Tactile Beige Bezel Push Buttons */
+    .bezel-btn {
+      font-family: var(--font-badge);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #332e26;
+      background: linear-gradient(180deg, #dcd7ca 0%, #c4bcac 100%);
+      border-top: 2px solid #f4f0e8;
+      border-left: 2px solid #f4f0e8;
+      border-right: 2px solid #787162;
+      border-bottom: 2px solid #696255;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .bezel-btn:hover {
+      background: linear-gradient(180deg, #e5e0d4 0%, #ceC6b6 100%);
+    }
+
+    .bezel-btn:active,
+    .bezel-btn.pressed {
+      border-top: 2px solid #696255;
+      border-left: 2px solid #787162;
+      border-right: 2px solid #f4f0e8;
+      border-bottom: 2px solid #f4f0e8;
+      transform: translateY(1px);
+    }
+
+    /* Master Physical POWER Switch */
+    .power-switch-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .power-callout-badge {
+      background: #ef4444;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.7);
+      animation: powerCalloutBounce 1.2s infinite ease-in-out;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .power-callout-badge.hidden {
+      display: none;
+    }
+
+    @keyframes powerCalloutBounce {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(-5px); }
+    }
+
+    .power-rocker-btn {
+      font-family: var(--font-badge);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 7px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(180deg, #e5e0d2 0%, #bfb7a6 100%);
+      border-top: 3px solid #f7f4ec;
+      border-left: 3px solid #f0ece1;
+      border-right: 3px solid #6c6556;
+      border-bottom: 3px solid #575145;
+      color: #29251e;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.35);
+      transition: all 0.12s ease;
+    }
+
+    .power-rocker-btn.powered-on {
+      background: linear-gradient(180deg, #c6beae 0%, #d8d1c3 100%);
+      border-top: 3px solid #6c6556;
+      border-left: 3px solid #6c6556;
+      border-right: 3px solid #f0ece1;
+      border-bottom: 3px solid #f7f4ec;
+    }
+
+    .power-led-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--led-amber);
+      box-shadow: 0 0 8px var(--led-amber);
+      animation: standbyBlink 2s infinite;
+    }
+
+    .power-rocker-btn.powered-on .power-led-dot {
+      background: var(--led-green);
+      box-shadow: 0 0 10px var(--led-green);
+      animation: none;
+    }
+
+    @keyframes standbyBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.25; }
+    }
+
+    /* ------------------------------------------------------------------
+       STATE 0: POWERED OFF CRT SCREEN STANDBY OVERLAY
+       ------------------------------------------------------------------ */
+    .screen-layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .screen-layer.hidden {
+      display: none !important;
+    }
+
+    #layer-poweroff {
+      background:
+        radial-gradient(ellipse 65% 55% at 50% 45%, #13181d 0%, #07090b 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-align: center;
+      padding: 24px;
+      z-index: 50;
+    }
+
+    .poweroff-card {
+      max-width: 480px;
+      padding: 28px 32px;
+      border-radius: 12px;
+      background: rgba(15, 23, 34, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(6px);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    #layer-poweroff:hover .poweroff-card {
+      transform: translateY(-2px);
+      border-color: rgba(45, 212, 191, 0.45);
+    }
+
+    .poweroff-icon-ring {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.18) 0%, rgba(15, 23, 42, 0.9) 70%);
+      border: 2px solid rgba(74, 222, 128, 0.45);
+      box-shadow: 0 0 28px rgba(34, 197, 94, 0.25);
+      font-size: 32px;
+      color: #4ade80;
+    }
+
+    .poweroff-title {
+      font-family: var(--font-badge);
+      font-size: 22px;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: 0.02em;
+      margin-bottom: 8px;
+    }
+
+    .poweroff-sub {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .poweroff-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 22px;
+      border-radius: 6px;
+      font-family: var(--font-badge);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: linear-gradient(135deg, #16a34a, #0d9488);
+      color: #ffffff;
+      border: 1px solid #4ade80;
+      box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+      cursor: pointer;
+    }
+
+    .poweroff-specs {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(148, 163, 184, 0.15);
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    /* ------------------------------------------------------------------
+       STATE 1 & 2: AWARD BIOS POST + LILO + KERNEL DMESG CONSOLE
+       ------------------------------------------------------------------ */
+    #layer-boot {
+      background: #000000;
+      color: #cccccc;
+      font-family: var(--font-vga);
+      font-size: 20px;
+      line-height: 1.22;
+      padding: 18px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 40;
+      overflow: hidden;
+    }
+
+    .bios-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .bios-header-text {
+      color: #d4d4d4;
+      white-space: pre-wrap;
+    }
+
+    .energy-star-box {
+      border: 2px solid #eab308;
+      padding: 6px 12px;
+      color: #facc15;
+      font-family: var(--font-vga);
+      font-size: 16px;
+      line-height: 1.1;
+      text-align: right;
+      flex-shrink: 0;
+      background: rgba(234, 179, 8, 0.05);
+    }
+
+    .energy-star-box .epa-green {
+      color: #22c55e;
+      font-weight: bold;
+    }
+
+    .boot-log-area {
+      flex: 1;
+      overflow-y: auto;
+      margin: 10px 0;
+      white-space: pre-wrap;
+      font-family: var(--font-vga);
+      font-size: 20px;
+      scrollbar-width: none;
+    }
+
+    .boot-footer-bar {
+      border-top: 1px solid #444;
+      padding-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #9ca3af;
+      font-size: 18px;
+    }
+
+    .boot-skip-btn {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 4px 12px;
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+
+    .boot-skip-btn:hover {
+      background: #38bdf8;
+      color: #000;
+    }
+
+    /* Splash Overlay inside Boot */
+    #layer-splash {
+      background: linear-gradient(160deg, #004e8c 0%, #008080 55%, #002b49 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 45;
+    }
+
+    .splash-window {
+      width: 480px;
+      max-width: 90%;
+      background: var(--win-gray);
+      border-top: 2px solid var(--win-white);
+      border-left: 2px solid var(--win-white);
+      border-right: 2px solid var(--win-dark);
+      border-bottom: 2px solid var(--win-dark);
+      box-shadow: 6px 6px 0 rgba(0,0,0,0.45);
+      padding: 4px;
+    }
+
+    .splash-hero {
+      background: linear-gradient(135deg, #000080 0%, #008080 100%);
+      padding: 26px 24px;
+      color: #fff;
+      text-align: center;
+      border: 2px inset var(--win-gray);
+    }
+
+    .splash-logo-title {
+      font-family: var(--font-gui);
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      text-shadow: 3px 3px 0 #000;
+    }
+
+    .splash-logo-title span {
+      color: #facc15;
+      font-weight: 400;
+    }
+
+    .splash-progress-track {
+      height: 18px;
+      background: #000;
+      border: 2px inset var(--win-gray);
+      margin-top: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .splash-progress-bar {
+      height: 100%;
+      width: 45%;
+      background: repeating-linear-gradient(90deg, #000080 0px, #000080 10px, #1084d0 10px, #1084d0 18px);
+      animation: win95Marquee 1.1s infinite linear;
+    }
+
+    @keyframes win95Marquee {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(240%); }
+    }
+
+    /* Safe to Turn Off Screen */
+    #layer-shutdown {
+      background: #000000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      z-index: 60;
+      padding: 24px;
+    }
+
+    .safe-turnoff-text {
+      font-family: var(--font-gui);
+      font-size: 30px;
+      font-weight: 700;
+      color: #ff7b00;
+      letter-spacing: 0.02em;
+      text-shadow: 0 0 12px rgba(255, 123, 0, 0.35);
+      margin-bottom: 24px;
+    }
+
+    /* ------------------------------------------------------------------
+       STATE 3: LINUX 95 (FVWM95) GRAPHICAL DESKTOP ENVIRONMENT
+       ------------------------------------------------------------------ */
+    #layer-desktop {
+      background-color: var(--desktop-bg);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 30;
+      overflow: hidden;
+      font-family: var(--font-gui);
+      font-size: 12px;
+      color: #000;
+    }
+
+    /* Desktop Wallpaper Presets */
+    #layer-desktop.wp-teal {
+      background: #008080;
+    }
+    #layer-desktop.wp-grid {
+      background-color: #005a5a;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    #layer-desktop.wp-slackware {
+      background: radial-gradient(circle at 75% 25%, #1e293b 0%, #0f172a 60%, #020617 100%);
+    }
+    #layer-desktop.wp-tartan {
+      background-color: #5c1919;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0px, rgba(0,0,0,0.22) 8px, transparent 8px, transparent 16px),
+        repeating-linear-gradient(90deg, rgba(255,200,0,0.08) 0px, rgba(255,200,0,0.08) 4px, transparent 4px, transparent 24px);
+    }
+    #layer-desktop.wp-clouds {
+      background: linear-gradient(180deg, #3b82f6 0%, #93c5fd 60%, #dbeafe 100%);
+    }
+
+    /* Classic 3D Win95 Bevel Utility Classes */
+    .win95-outset {
+      background: var(--win-gray);
+      border-top: 2px solid var(--win-white);
+      border-left: 2px solid var(--win-white);
+      border-right: 2px solid var(--win-dark);
+      border-bottom: 2px solid var(--win-dark);
+      box-shadow: inset -1px -1px 0 var(--win-shadow), inset 1px 1px 0 var(--win-gray-light);
+    }
+
+    .win95-inset {
+      background: #ffffff;
+      border-top: 2px solid var(--win-shadow);
+      border-left: 2px solid var(--win-shadow);
+      border-right: 2px solid var(--win-white);
+      border-bottom: 2px solid var(--win-white);
+      box-shadow: inset 1px 1px 0 var(--win-dark);
+    }
+
+    .win95-btn {
+      font-family: var(--font-gui);
+      font-size: 12px;
+      color: #000;
+      background: var(--win-gray);
+      border-top: 2px solid var(--win-white);
+      border-left: 2px solid var(--win-white);
+      border-right: 2px solid var(--win-dark);
+      border-bottom: 2px solid var(--win-dark);
+      box-shadow: inset -1px -1px 0 var(--win-shadow);
+      padding: 3px 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .win95-btn:active,
+    .win95-btn.active {
+      border-top: 2px solid var(--win-dark);
+      border-left: 2px solid var(--win-dark);
+      border-right: 2px solid var(--win-white);
+      border-bottom: 2px solid var(--win-white);
+      box-shadow: inset 1px 1px 0 var(--win-shadow);
+      padding: 4px 9px 2px 11px;
+    }
+
+    /* Desktop Workspace Area */
+    .desktop-workspace {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Desktop Icons Grid */
+    .desktop-icons {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-content: flex-start;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .desktop-icon {
+      width: 78px;
+      padding: 5px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      cursor: pointer;
+      pointer-events: auto;
+      border: 1px solid transparent;
+    }
+
+    .desktop-icon .icon-glyph {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      margin-bottom: 4px;
+      filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.65));
+    }
+
+    .desktop-icon .icon-label {
+      color: #ffffff;
+      font-size: 11.5px;
+      line-height: 1.2;
+      padding: 1px 3px;
+      text-shadow: 1px 1px 1px #000, -1px -1px 1px rgba(0,0,0,0.6);
+      word-break: break-word;
+    }
+
+    .desktop-icon.selected .icon-label {
+      background: var(--selection-bg);
+      color: var(--selection-text);
+      outline: 1px dotted #ffff00;
+      text-shadow: none;
+    }
+
+    /* Windows Container */
+    .windows-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Individual FVWM95 / Win95 Application Window */
+    .os-window {
+      position: absolute;
+      background: var(--win-gray);
+      border-top: 2px solid var(--win-white);
+      border-left: 2px solid var(--win-white);
+      border-right: 2px solid var(--win-dark);
+      border-bottom: 2px solid var(--win-dark);
+      box-shadow: inset -1px -1px 0 var(--win-shadow), inset 1px 1px 0 var(--win-gray-light), 4px 4px 12px rgba(0,0,0,0.45);
+      display: flex;
+      flex-direction: column;
+      pointer-events: auto;
+      min-width: 260px;
+      min-height: 160px;
+      padding: 3px;
+    }
+
+    .os-window.minimized {
+      display: none !important;
+    }
+
+    .os-window.maximized {
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .win-titlebar {
+      height: 22px;
+      background: linear-gradient(90deg, var(--title-inactive-start), var(--title-inactive-end));
+      color: #d8d8d8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 3px 0 5px;
+      cursor: move;
+      flex-shrink: 0;
+    }
+
+    .os-window.focused .win-titlebar {
+      background: linear-gradient(90deg, var(--title-active-start), var(--title-active-end));
+      color: var(--title-text);
+    }
+
+    .win-title-left {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 700;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .win-controls {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+
+    .win-ctrl-btn {
+      width: 16px;
+      height: 14px;
+      background: var(--win-gray);
+      border-top: 1px solid var(--win-white);
+      border-left: 1px solid var(--win-white);
+      border-right: 1px solid var(--win-dark);
+      border-bottom: 1px solid var(--win-dark);
+      box-shadow: inset -1px -1px 0 var(--win-shadow);
+      font-family: var(--font-gui);
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1;
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .win-ctrl-btn:active {
+      border-top: 1px solid var(--win-dark);
+      border-left: 1px solid var(--win-dark);
+      border-right: 1px solid var(--win-white);
+      border-bottom: 1px solid var(--win-white);
+    }
+
+    .win-menubar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 2px 6px;
+      border-bottom: 1px solid var(--win-shadow);
+      font-size: 11.5px;
+      background: var(--win-gray);
+      flex-shrink: 0;
+    }
+
+    .win-menubar span {
+      cursor: pointer;
+      padding: 1px 4px;
+    }
+
+    .win-menubar span:hover {
+      background: var(--selection-bg);
+      color: #fff;
+    }
+
+    .win-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      margin-top: 2px;
+    }
+
+    .win-statusbar {
+      height: 20px;
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #111;
+      flex-shrink: 0;
+    }
+
+    .status-pane {
+      flex: 1;
+      height: 100%;
+      padding: 1px 6px;
+      border-top: 1px solid var(--win-shadow);
+      border-left: 1px solid var(--win-shadow);
+      border-right: 1px solid var(--win-white);
+      border-bottom: 1px solid var(--win-white);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+    }
+
+    .win-resize-grip {
+      position: absolute;
+      right: 1px;
+      bottom: 1px;
+      width: 13px;
+      height: 13px;
+      cursor: nwse-resize;
+      background: linear-gradient(135deg, transparent 50%, var(--win-shadow) 50%, var(--win-white) 60%, transparent 65%, var(--win-shadow) 75%, var(--win-white) 85%);
+      z-index: 5;
+    }
+
+    /* ------------------------------------------------------------------
+       TASKBAR, START MENU & SYSTEM TRAY
+       ------------------------------------------------------------------ */
+    .os-taskbar {
+      height: 30px;
+      background: var(--win-gray);
+      border-top: 2px solid var(--win-white);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 4px;
+      gap: 4px;
+      z-index: 500;
+      flex-shrink: 0;
+    }
+
+    .start-button {
+      height: 24px;
+      padding: 0 8px;
+      font-weight: 700;
+      font-size: 12.5px;
+      letter-spacing: 0.01em;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .taskbar-divider {
+      width: 2px;
+      height: 22px;
+      border-left: 1px solid var(--win-shadow);
+      border-right: 1px solid var(--win-white);
+      margin: 0 2px;
+    }
+
+    .taskbar-windows {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .task-btn {
+      height: 24px;
+      min-width: 110px;
+      max-width: 165px;
+      padding: 0 7px;
+      font-size: 11.5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .task-btn.active {
+      background: repeating-conic-gradient(#c0c0c0 0% 25%, #e6e6e6 0% 50%) 50% / 2px 2px;
+      font-weight: 700;
+    }
+
+    /* FVWM95 Mini Virtual Desktop Pager + System Tray */
+    .systray {
+      height: 24px;
+      padding: 0 8px;
+      border-top: 1px solid var(--win-shadow);
+      border-left: 1px solid var(--win-shadow);
+      border-right: 1px solid var(--win-white);
+      border-bottom: 1px solid var(--win-white);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      flex-shrink: 0;
+    }
+
+    .tray-icon {
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Start Menu Popup */
+    .start-menu {
+      position: absolute;
+      left: 4px;
+      bottom: 30px;
+      width: 235px;
+      background: var(--win-gray);
+      border-top: 2px solid var(--win-white);
+      border-left: 2px solid var(--win-white);
+      border-right: 2px solid var(--win-dark);
+      border-bottom: 2px solid var(--win-dark);
+      box-shadow: 4px 4px 10px rgba(0,0,0,0.5);
+      display: flex;
+      z-index: 600;
+      padding: 2px;
+    }
+
+    .start-menu.hidden {
+      display: none !important;
+    }
+
+    .start-banner {
+      width: 28px;
+      background: linear-gradient(180deg, #000080 0%, #008080 100%);
+      color: #ffffff;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 10px;
+    }
+
+    .start-banner-text {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .start-banner-text span {
+      font-weight: 300;
+      color: #facc15;
+    }
+
+    .start-items {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 2px 0;
+    }
+
+    .start-item {
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 12px;
+      cursor: pointer;
+      color: #000;
+    }
+
+    .start-item:hover {
+      background: var(--selection-bg);
+      color: #fff;
+    }
+
+    .start-sep {
+      height: 2px;
+      border-top: 1px solid var(--win-shadow);
+      border-bottom: 1px solid var(--win-white);
+      margin: 3px 4px;
+    }
+
+    /* Desktop Context Menu */
+    .context-menu {
+      position: absolute;
+      width: 180px;
+      background: var(--win-gray);
+      border-top: 2px solid var(--win-white);
+      border-left: 2px solid var(--win-white);
+      border-right: 2px solid var(--win-dark);
+      border-bottom: 2px solid var(--win-dark);
+      box-shadow: 3px 3px 8px rgba(0,0,0,0.45);
+      z-index: 700;
+      padding: 2px;
+    }
+
+    .context-menu.hidden {
+      display: none !important;
+    }
+
+    /* ------------------------------------------------------------------
+       APPLICATION-SPECIFIC STYLES (Terminal, FileMgr, IDE, Doom, Paint)
+       ------------------------------------------------------------------ */
+    /* rxvt Terminal */
+    .terminal-wrap {
+      flex: 1;
+      background: #080b0e;
+      color: #d8f3dc;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.45;
+      padding: 8px 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      cursor: text;
+    }
+
+    .term-quickbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 5px;
+      background: #b8b8b8;
+      border-bottom: 1px solid var(--win-shadow);
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+
+    .term-chip {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      padding: 1px 6px;
+      background: var(--win-gray);
+      border: 1px outset var(--win-white);
+      cursor: pointer;
+      white-space: nowrap;
+      color: #000;
+    }
+
+    .term-chip:hover {
+      background: #dcdcdc;
+    }
+
+    .term-output {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .term-input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .term-prompt {
+      color: #4ade80;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .term-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #f8fafc;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      caret-color: #4ade80;
+    }
+
+    /* File Manager (XFM-95) */
+    .fm-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      background: var(--win-gray);
+      border-bottom: 1px solid var(--win-shadow);
+      flex-wrap: wrap;
+    }
+
+    .fm-address {
+      flex: 1;
+      height: 22px;
+      padding: 0 6px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      display: flex;
+      align-items: center;
+      background: #fff;
+    }
+
+    .fm-split {
+      flex: 1;
+      display: flex;
+      gap: 4px;
+      padding: 3px;
+      overflow: hidden;
+    }
+
+    .fm-tree {
+      width: 155px;
+      overflow-y: auto;
+      padding: 4px;
+      font-size: 11.5px;
+      flex-shrink: 0;
+    }
+
+    .fm-tree-item {
+      padding: 2px 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .fm-tree-item:hover,
+    .fm-tree-item.active {
+      background: var(--selection-bg);
+      color: #fff;
+    }
+
+    .fm-grid {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+      grid-auto-rows: max-content;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .fm-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 6px 4px;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+
+    .fm-item:hover,
+    .fm-item.selected {
+      background: var(--selection-bg);
+      color: #fff;
+    }
+
+    .fm-item-icon {
+      font-size: 24px;
+      margin-bottom: 3px;
+    }
+
+    .fm-item-name {
+      font-size: 11px;
+      word-break: break-all;
+      line-height: 1.2;
+    }
+
+    /* CodePad 95 Editor */
+    .editor-Area {
+      flex: 1;
+      width: 100%;
+      resize: none;
+      border: none;
+      outline: none;
+      padding: 8px 10px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.45;
+      background: #ffffff;
+      color: #0f172a;
+    }
+
+    /* TuxSweeper */
+    .sweeper-wrap {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      background: var(--win-gray);
+      flex: 1;
+      overflow: auto;
+    }
+
+    .sweeper-hud {
+      width: 100%;
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 2px solid var(--win-shadow);
+      border-left: 2px solid var(--win-shadow);
+      border-right: 2px solid var(--win-white);
+      border-bottom: 2px solid var(--win-white);
+    }
+
+    .sweeper-led {
+      background: #000;
+      color: #ff2222;
+      font-family: var(--font-vga);
+      font-size: 24px;
+      padding: 0 6px;
+      line-height: 1;
+      border: 1px inset #808080;
+      min-width: 44px;
+      text-align: right;
+    }
+
+    .sweeper-grid {
+      display: grid;
+      border-top: 3px solid var(--win-shadow);
+      border-left: 3px solid var(--win-shadow);
+      border-right: 3px solid var(--win-white);
+      border-bottom: 3px solid var(--win-white);
+    }
+
+    .mine-cell {
+      width: 24px;
+      height: 24px;
+      font-family: var(--font-gui);
+      font-weight: 800;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: var(--win-gray);
+      border-top: 2px solid var(--win-white);
+      border-left: 2px solid var(--win-white);
+      border-right: 2px solid var(--win-dark);
+      border-bottom: 2px solid var(--win-dark);
+    }
+
+    .mine-cell.revealed {
+      border: 1px solid #808080;
+      background: #bdbdbd;
+      cursor: default;
+    }
+
+    .mine-cell.exploded {
+      background: #ff0000;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .workstation-stage {
+        padding: 6px;
+      }
+      .crt-monitor-unit {
+        padding: 8px;
+      }
+      .crt-screen {
+        height: 520px;
+      }
+      .os-window {
+        max-width: 96% !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Lab Utility Bar -->
+  <div class="lab-topbar">
+    <div class="lab-topbar-left">
+      <a href="../" class="lab-back-link">← Lab Index</a>
+      <span class="lab-title-pill">
+        <span>🐧 Linux 95 Workstation</span>
+      </span>
+      <span class="status-chip" title="Comlink Web Worker RPC Kernel Status">
+        <span id="rpc-status-dot" class="status-dot online"></span>
+        <span id="rpc-status-label">Comlink Worker: Ready</span>
+      </span>
+      <span class="status-chip" title="StackBlitz WebContainer API Bridge Status">
+        <span id="wc-status-dot" class="status-dot amber"></span>
+        <span id="wc-status-label">WebContainer API: Hybrid VFS</span>
+      </span>
+    </div>
+
+    <div class="lab-topbar-right">
+      <button class="lab-btn primary" id="btn-instant-desktop" title="Jump straight to the booted Linux 95 desktop">⚡ Instant Desktop</button>
+      <button class="lab-btn" id="btn-toggle-fullscreen" title="Toggle between 90s CRT Monitor Bezel and Fullscreen Desktop">🖥️ Fullscreen View</button>
+      <button class="lab-btn" id="btn-toggle-audio" title="Toggle Web Audio API CRT, Floppy & Sound Blaster 16 synthesis">🔊 Sound: ON</button>
+    </div>
+  </div>
+
+  <!-- Main 1995 Workstation Stage -->
+  <main class="workstation-stage">
+    <div class="crt-monitor-unit">
+      <!-- Molded Ventilation Slots -->
+      <div class="crt-top-vents" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+
+      <!-- Monitor Top Silkscreen Bezel -->
+      <div class="crt-bezel-header">
+        <div class="brand-plate">
+          <div class="trinitron-badge">
+            <span class="trinitron-bars"><i></i><i></i><i></i></span>
+            <span>TUXSYNC 17GLi</span>
+          </div>
+          <span class="model-tag">Multiscan • 0.25mm Aperture Grille</span>
+        </div>
+
+        <div class="sticker-badges">
+          <span class="case-sticker sticker-pentium">Pentium-S 133</span>
+          <span class="case-sticker sticker-linux">Linux 95 • Kernel 2.0.36</span>
+        </div>
+      </div>
+
+      <!-- Dark Inner Frame + Curved Glass CRT Screen -->
+      <div class="crt-inner-frame">
+        <div class="crt-screen" id="crt-screen">
+          <div class="crt-beam-layer" id="crt-beam-layer">
+
+            <!-- ==========================================================
+                 LAYER 0: POWERED OFF / STANDBY SCREEN
+                 ========================================================== -->
+            <div class="screen-layer" id="layer-poweroff">
+              <div class="poweroff-card" id="poweroff-card-trigger">
+                <div class="poweroff-icon-ring">⏻</div>
+                <div class="poweroff-title">WORKSTATION POWERED OFF</div>
+                <p class="poweroff-sub">
+                  Flip the tactile <strong>POWER</strong> switch on the lower right of the monitor bezel (or click anywhere here) to energize the CRT anode, initialize the <strong>Comlink</strong> RPC kernel worker, and boot <strong>Linux 95</strong>.
+                </p>
+                <button class="poweroff-cta" type="button">
+                  <span>⏻ Power On System</span>
+                </button>
+                <div class="poweroff-specs">
+                  <span>• Award BIOS v4.50PG</span>
+                  <span>• Comlink Worker VFS</span>
+                  <span>• @webcontainer/api Bridge</span>
+                  <span>• FVWM95 GUI</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ==========================================================
+                 LAYER 1 & 2: AWARD BIOS POST + LILO + KERNEL DMESG
+                 ========================================================== -->
+            <div class="screen-layer hidden" id="layer-boot">
+              <div class="bios-top-row" id="bios-header-row">
+                <div class="bios-header-text" id="bios-header-text">Award Modular BIOS v4.50PG, An Energy Star Ally
+Copyright (C) 1984-95, Award Software, Inc.
+TUX-P54C-PCI ACPI BIOS Revision 1004 (Comlink + WebContainer Edition)</div>
+                <div class="energy-star-box">
+                  <div>★ <span class="epa-green">EPA POLLUTION PREVENTER</span></div>
+                  <div>ENERGY STAR COMPLIANT</div>
+                  <div style="font-size:13px;color:#9ca3af;">WEBCONTAINER / COMLINK</div>
+                </div>
+              </div>
+
+              <div class="boot-log-area" id="boot-log-area"></div>
+
+              <div class="boot-footer-bar">
+                <span id="boot-footer-hint">Press DEL to enter SETUP, ENTER to boot LILO immediately</span>
+                <button class="boot-skip-btn" id="btn-skip-boot" type="button">Skip POST → Boot Desktop Now</button>
+              </div>
+            </div>
+
+            <!-- ==========================================================
+                 LAYER 2.5: LINUX 95 GRAPHICAL SPLASH
+                 ========================================================== -->
+            <div class="screen-layer hidden" id="layer-splash">
+              <div class="splash-window">
+                <div class="splash-hero">
+                  <div style="font-size:44px;margin-bottom:6px;">🐧</div>
+                  <div class="splash-logo-title">Linux <span>95</span></div>
+                  <div style="font-size:12px;margin-top:6px;opacity:0.9;font-family:var(--font-mono);">
+                    FVWM95 X11 Window Manager • Comlink RPC + WebContainer VFS
+                  </div>
+                </div>
+                <div class="splash-progress-track">
+                  <div class="splash-progress-bar"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ==========================================================
+                 LAYER 3: LINUX 95 INTERACTIVE DESKTOP (FVWM95)
+                 ========================================================== -->
+            <div class="screen-layer hidden wp-teal" id="layer-desktop">
+              <div class="desktop-workspace" id="desktop-workspace">
+                <!-- Desktop Icons -->
+                <div class="desktop-icons" id="desktop-icons"></div>
+
+                <!-- Dynamic Floating Windows -->
+                <div class="windows-layer" id="windows-layer"></div>
+
+                <!-- Right-Click Desktop Context Menu -->
+                <div class="context-menu hidden" id="desktop-context-menu">
+                  <div class="start-item" data-ctx="terminal">🐚 Open rxvt Terminal Here</div>
+                  <div class="start-item" data-ctx="new-file">📄 New Text File in /home/tux</div>
+                  <div class="start-item" data-ctx="explorer">📁 Explore File System</div>
+                  <div class="start-sep"></div>
+                  <div class="start-item" data-ctx="wallpaper">🎨 Cycle Desktop Wallpaper</div>
+                  <div class="start-item" data-ctx="kernel">⚙️ Comlink &amp; WebContainer Monitor</div>
+                  <div class="start-sep"></div>
+                  <div class="start-item" data-ctx="settings">🖥️ Display &amp; CRT Properties</div>
+                </div>
+
+                <!-- Classic Start Menu -->
+                <div class="start-menu hidden" id="start-menu">
+                  <div class="start-banner">
+                    <div class="start-banner-text">Linux <span>95</span></div>
+                  </div>
+                  <div class="start-items">
+                    <div class="start-item" data-launch="terminal">🐚 <span><b>rxvt Terminal</b> (POSIX Shell)</span></div>
+                    <div class="start-item" data-launch="explorer">📁 <span><b>My Linux System</b> (Files)</span></div>
+                    <div class="start-item" data-launch="editor">📝 <span><b>CodePad 95</b> (IDE / C / JS)</span></div>
+                    <div class="start-item" data-launch="browser">🌐 <span><b>Netscape 1.1N</b> (Web / Local)</span></div>
+                    <div class="start-item" data-launch="kernel">⚡ <span><b>Comlink &amp; WebContainer</b></span></div>
+                    <div class="start-sep"></div>
+                    <div class="start-item" data-launch="doom">🔫 <span><b>Tuxenstein 3D</b> (Raycaster)</span></div>
+                    <div class="start-item" data-launch="mines">💣 <span><b>TuxSweeper</b> (Minesweeper)</span></div>
+                    <div class="start-item" data-launch="paint">🎨 <span><b>TuxPaint 95</b> (Pixel Art)</span></div>
+                    <div class="start-item" data-launch="synth">🎹 <span><b>Sound Blaster 16</b> (FM Synth)</span></div>
+                    <div class="start-sep"></div>
+                    <div class="start-item" data-launch="settings">🎛️ <span><b>Control Panel</b> &amp; Themes</span></div>
+                    <div class="start-item" data-launch="run">🚀 <span><b>Run...</b> Command / Script</span></div>
+                    <div class="start-sep"></div>
+                    <div class="start-item" data-launch="shutdown">⏻ <span><b>Shut Down...</b></span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Classic Bottom Taskbar -->
+              <div class="os-taskbar">
+                <button class="win95-btn start-button" id="btn-start" type="button">
+                  <span>🐧</span>
+                  <span>Start</span>
+                </button>
+                <div class="taskbar-divider"></div>
+                <div class="taskbar-windows" id="taskbar-windows"></div>
+                <div class="taskbar-divider"></div>
+                <div class="systray">
+                  <span class="tray-icon" id="tray-wc" title="Comlink & WebContainer Kernel Monitor">⚡</span>
+                  <span class="tray-icon" id="tray-sound" title="Sound Blaster 16 Audio">🔊</span>
+                  <span id="tray-clock" style="font-family:var(--font-gui);font-weight:600;">12:00 PM</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ==========================================================
+                 LAYER 4: SAFE TO TURN OFF COMPUTER
+                 ========================================================== -->
+            <div class="screen-layer hidden" id="layer-shutdown">
+              <div class="safe-turnoff-text">It's now safe to turn off<br>your computer.</div>
+              <button class="win95-btn" id="btn-reboot-from-shutdown" style="padding:6px 16px;font-weight:700;">
+                ↻ Cold Reboot Linux 95
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Scanlines & Glare Overlays -->
+          <div class="crt-overlay scanlines-subtle" id="crt-overlay"></div>
+          <div class="crt-glare"></div>
+        </div>
+      </div>
+
+      <!-- Lower Monitor & Workstation Hardware Control Strip -->
+      <div class="crt-control-deck">
+        <div class="deck-group">
+          <!-- 3.5" Floppy Diskette Drive -->
+          <div class="floppy-bay" id="floppy-bay" title="Click to insert/eject 3.5&quot; 1.44MB Linux 95 Bonus Diskette (/mnt/floppy)">
+            <span style="font-family:var(--font-badge);font-size:10px;font-weight:700;color:#3b362d;">A: 1.44MB</span>
+            <div class="floppy-slot" id="btn-floppy-slot">
+              <div class="floppy-disk-edge"></div>
+            </div>
+            <button class="floppy-eject-btn" id="btn-floppy-eject" type="button" title="Eject / Insert Diskette">⏏</button>
+          </div>
+
+          <!-- Turbo Module with 7-Segment LED -->
+          <div class="turbo-module">
+            <div class="seven-seg-box" id="turbo-led-display">133</div>
+            <button class="bezel-btn pressed" id="btn-turbo" type="button" title="Toggle CPU Turbo Clock (133 MHz vs 66 MHz)">
+              <span>TURBO</span>
+            </button>
+          </div>
+
+          <!-- Hardware Activity LEDs -->
+          <div class="led-cluster">
+            <div class="led-item" title="IDE Hard Disk / Virtual File System I/O">
+              <span class="hw-led" id="led-hdd"></span>
+              <span>HDD</span>
+            </div>
+            <div class="led-item" title="Comlink Worker RPC Activity">
+              <span class="hw-led green-on" id="led-rpc"></span>
+              <span>COMLINK</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="deck-group">
+          <button class="bezel-btn" id="btn-degauss" type="button" title="Degauss CRT Phosphor Coil">
+            <span>🧲 Degauss</span>
+          </button>
+          <button class="bezel-btn" id="btn-scanlines" type="button" title="Cycle CRT Scanline Intensity">
+            <span>📺 CRT: Subtle</span>
+          </button>
+          <button class="bezel-btn" id="btn-reset-hw" type="button" title="Warm Reset Workstation">
+            <span>↻ Reset</span>
+          </button>
+
+          <!-- Tactile Power Rocker Switch -->
+          <div class="power-switch-wrap">
+            <div class="power-callout-badge" id="power-callout-badge">POWER ON HERE →</div>
+            <button class="power-rocker-btn" id="btn-power-switch" type="button" title="Master Workstation Power Switch">
+              <span class="power-led-dot"></span>
+              <span>POWER</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /* ======================================================================
+       1. RETRO SOUND BLASTER 16 & HARDWARE AUDIO SYNTHESIZER (Web Audio API)
+       ====================================================================== */
+    class RetroSoundEngine {
+      constructor() {
+        this.enabled = true;
+        this.ctx = null;
+        this.midiTimer = null;
+        this.isPlayingMidi = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      }
+
+      playSwitchClick(on = true) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(on ? 190 : 130, now);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 0.045);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      playPostBeep() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.11, now);
+        gain.gain.setValueAtTime(0.001, now + 0.14);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+
+      playFloppySeek() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [0, 0.05, 0.11].forEach((offset, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(110 + i * 30, now + offset);
+          gain.gain.setValueAtTime(0.07, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.035);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.04);
+        });
+      }
+
+      playHddTick() {
+        if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(70 + Math.random() * 60, now);
+        gain.gain.setValueAtTime(0.02, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.012);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.015);
+      }
+
+      playDegaussCoil() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(115, now);
+        osc.frequency.exponentialRampToValueAtTime(42, now + 0.75);
+        gain.gain.setValueAtTime(0.28, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.82);
+      }
+
+      playStartupChord() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        // Nostalgic warm FM 95 chord (Ebmaj9 voicing)
+        const freqs = [155.56, 233.08, 293.66, 392.00, 466.16, 587.33];
+        freqs.forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+          osc.frequency.setValueAtTime(f, now + idx * 0.05);
+          gain.gain.setValueAtTime(0.001, now + idx * 0.05);
+          gain.gain.linearRampToValueAtTime(0.075, now + idx * 0.05 + 0.15);
+          gain.gain.exponentialRampToValueAtTime(0.0008, now + 2.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.05);
+          osc.stop(now + 2.3);
+        });
+      }
+
+      playTone(freq = 440, duration = 0.15, type = 'square') {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0.09, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration + 0.02);
+      }
+    }
+
+    const sound = new RetroSoundEngine();
+
+    /* ======================================================================
+       2. COMLINK KERNEL ENGINE + VIRTUAL FILE SYSTEM + WEBCONTAINER BRIDGE
+       ====================================================================== */
+    const INITIAL_FS = {
+      '/': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/bin': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/bin/sh': { type: 'file', mode: '-rwxr-xr-x', content: '#!/bin/sh\n# POSIX Bourne Shell (Comlink RPC v2.0.36)' },
+      '/bin/ls': { type: 'file', mode: '-rwxr-xr-x', content: 'ELF 32-bit LSB executable, Intel 80386' },
+      '/bin/gcc': { type: 'file', mode: '-rwxr-xr-x', content: 'GNU C Compiler v2.7.2 (Linux 95 Micro-C Engine)' },
+      '/bin/node': { type: 'file', mode: '-rwxr-xr-x', content: 'WebContainer / V8 JavaScript Runtime Bridge' },
+      '/etc': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/etc/hostname': { type: 'file', mode: '-rw-r--r--', content: 'linux95.localdomain\n' },
+      '/etc/motd': { type: 'file', mode: '-rw-r--r--', content:
+`Welcome to Linux 95 (Kernel 2.0.36-webcontainer-comlink i586)
+=============================================================
+ * Window Manager : FVWM95 (Redmond95 Look & Feel)
+ * Kernel Bridge  : Comlink RPC + @webcontainer/api VFS
+ * Try commands   : neofetch, ls -la, gcc src/hello.c && ./a.out,
+                    node src/benchmark.js, python src/fib.py,
+                    cowsay "Hello from 1995!", top, sl, help` },
+      '/etc/passwd': { type: 'file', mode: '-rw-r--r--', content: 'root:x:0:0:root:/root:/bin/sh\ntux:x:1000:1000:Tux Penguin:/home/tux:/bin/sh\n' },
+      '/etc/os-release': { type: 'file', mode: '-rw-r--r--', content: 'NAME="Linux 95"\nVERSION="1995.10 (Slackware/FVWM95 Edition)"\nID=linux95\nKERNEL="2.0.36-comlink-webcontainer"\n' },
+      '/proc': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/proc/cpuinfo': { type: 'file', mode: '-r--r--r--', content: 'processor\t: 0\nvendor_id\t: GenuineIntel\nmodel name\t: Pentium(R) P54C 133MHz (Comlink Worker)\ncpu MHz\t\t: 133.000\nbogomips\t: 265.42\n' },
+      '/proc/version': { type: 'file', mode: '-r--r--r--', content: 'Linux version 2.0.36-webcontainer (torvalds@helsinki.fi) (gcc version 2.7.2) #1 Sun Oct 22 14:20:00 EET 1995\n' },
+      '/var': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/var/www': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/var/www/index.html': { type: 'file', mode: '-rw-r--r--', content:
+`<html>
+<body bgcolor="#fef9c3" text="#1e293b">
+  <center>
+    <h2>🚧 Welcome to Tux's 1995 Personal Home Page! 🚧</h2>
+    <p><i>Hosted live from <code>/var/www/index.html</code> inside the Linux 95 VFS!</i></p>
+    <hr width="80%">
+  </center>
+  <p>Edit this file in <b>CodePad 95</b> or via the <b>rxvt Terminal</b> and hit Reload in Netscape Navigator 1.1N to see your changes instantaneously!</p>
+  <ul>
+    <li><b>Kernel:</b> Linux 2.0.36 + Comlink RPC Worker</li>
+    <li><b>Container API:</b> StackBlitz @webcontainer/api Bridge</li>
+    <li><b>Favorite Band:</b> Kraftwerk &amp; Nine Inch Nails (1995)</li>
+  </ul>
+  <p align="center"><font size="2" color="#0f766e">[ Best viewed with Netscape Navigator 1.1N at 800x600 ]</font></p>
+</body>
+</html>` },
+      '/mnt': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/mnt/floppy': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/mnt/floppy/DISKETTE_README.txt': { type: 'file', mode: '-r--r--r--', content:
+`=== 3.5" HD FLOPPY DISKETTE (A:) ===
+Label: LINUX95_BONUS_144MB
+Contents:
+1. /mnt/floppy/matrix.sh  - Run 'sh /mnt/floppy/matrix.sh' in terminal
+2. /mnt/floppy/secret.txt - Linus Torvalds 1991 Usenet Archive
+` },
+      '/mnt/floppy/matrix.sh': { type: 'file', mode: '-rwxr-xr-x', content: '#!/bin/sh\necho "Wake up, Tux..."\necho "The Comlink Matrix has you."\nuname -a\n' },
+      '/mnt/floppy/secret.txt': { type: 'file', mode: '-r--r--r--', content:
+`From: torvalds@klaava.Helsinki.FI (Linus Benedict Torvalds)
+Newsgroups: comp.os.minix
+Subject: What would you like to see most in minix?
+Date: 25 Aug 91 20:57:08 GMT
+
+Hello everybody out there using minix -
+I'm doing a (free) operating system (just a hobby, won't be big and
+professional like gnu) for 386(486) AT clones...
+` },
+      '/home': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/home/tux': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/home/tux/README.txt': { type: 'file', mode: '-rw-r--r--', content:
+`LINUX 95 WORKSTATION - QUICK START GUIDE
+========================================
+Welcome to Linux 95! Although designed as an authentic 1995 CRT & FVWM95
+experience, this workstation runs on a real Comlink RPC kernel and
+Virtual File System (with optional @webcontainer/api cross-origin bridge).
+
+THINGS TO TRY:
+1. Open 'rxvt Terminal' and run:
+   - gcc src/hello.c && ./a.out
+   - node src/benchmark.js
+   - python src/fib.py
+   - cowsay "Linux 95 Rocks!"
+   - neofetch
+2. Open 'CodePad 95', edit /home/tux/src/hello.c or /var/www/index.html,
+   save it, and click '▶ Compile & Run'!
+3. Play 'Tuxenstein 3D' (60fps 3D raycaster) or 'TuxSweeper'.
+4. Click the physical DEGAUSS or TURBO buttons on the CRT monitor bezel!
+` },
+      '/home/tux/todo_1995.txt': { type: 'file', mode: '-rw-r--r--', content:
+`- [x] Upgrade 486DX2-66 to Pentium 133MHz
+- [x] Compile Linux kernel 2.0.36 with Sound Blaster 16 support
+- [x] Configure FVWM95 to look like Windows 95 so friends aren't scared
+- [x] Bridge VFS over Comlink RPC + WebContainer API
+- [ ] Beat level 1 of Tuxenstein 3D without taking damage
+` },
+      '/home/tux/src': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/home/tux/src/hello.c': { type: 'file', mode: '-rw-r--r--', content:
+`#include <stdio.h>
+
+int main() {
+    printf("Hello from GNU C (gcc 2.7.2) on Linux 95!\\n");
+    int mhz = 133;
+    int bogomips = mhz * 2;
+    printf("CPU Clock : %d MHz (%d BogoMIPS)\\n", mhz, bogomips);
+    for (int i = 1; i <= 4; i++) {
+        printf("  [ Frame %d ] Comlink Kernel Syscall OK\\n", i);
+    }
+    return 0;
+}
+` },
+      '/home/tux/src/benchmark.js': { type: 'file', mode: '-rw-r--r--', content:
+`// Runs inside the Comlink / WebContainer JS Engine
+const os = require('os');
+const fs = require('fs');
+
+console.log("=== Linux 95 Node/JS Micro-Benchmark ===");
+console.log("Host Architecture :", os.arch(), os.platform());
+console.log("Hostname          :", os.hostname());
+
+const start = Date.now();
+let primes = 0;
+for (let n = 2; n < 5000; n++) {
+  let isPrime = true;
+  for (let d = 2; d * d <= n; d++) {
+    if (n % d === 0) { isPrime = false; break; }
+  }
+  if (isPrime) primes++;
+}
+console.log("Found " + primes + " primes under 5000 in " + (Date.now() - start) + "ms");
+console.log("Files in /home/tux:", fs.readdirSync('/home/tux').join(', '));
+` },
+      '/home/tux/src/fib.py': { type: 'file', mode: '-rw-r--r--', content:
+`# Python 1.3 (1995 CWI Amsterdam release) on Linux 95
+print("Python 1.3 (Oct 22 1995) [GCC 2.7.2] on linux95")
+a = 0
+b = 1
+for i in range(8):
+    print("fib(" + str(i) + ") =", a)
+    temp = a + b
+    a = b
+    b = temp
+` },
+      '/home/tux/pictures': { type: 'dir', mtime: 'Oct 22 1995' },
+      '/home/tux/pictures/tux_banner.txt': { type: 'file', mode: '-rw-r--r--', content:
+`       .--.
+      |o_o |
+      |:_/ |
+     //   \\ \\
+    (|     | )
+   /'\\_   _/\`\\
+   \\___)=(___/   LINUX 95 WORKSTATION
+` },
+      '/home/tux/.trash': { type: 'dir', mtime: 'Oct 22 1995' }
+    };
+
+    class KernelEngine {
+      constructor(seedFs) {
+        this.fs = JSON.parse(JSON.stringify(seedFs));
+        this.cwd = '/home/tux';
+        this.env = {
+          USER: 'tux',
+          HOME: '/home/tux',
+          HOSTNAME: 'linux95',
+          PATH: '/bin:/usr/bin:/usr/local/bin',
+          SHELL: '/bin/sh',
+          DISPLAY: ':0.0',
+          TERM: 'rxvt-xpm'
+        };
+        this.bootTime = Date.now();
+        this.rpcCount = 0;
+        this.rpcLog = [];
+        this.floppyMounted = true;
+        this.processes = [
+          { pid: 1, user: 'root', cpu: 0.1, mem: 1.2, cmd: '/sbin/init [5]' },
+          { pid: 42, user: 'root', cpu: 0.4, mem: 2.8, cmd: 'comlink-rpcd --worker' },
+          { pid: 68, user: 'root', cpu: 0.2, mem: 3.4, cmd: 'webcontainer-vfsd --sync' },
+          { pid: 104, user: 'tux', cpu: 1.6, mem: 6.5, cmd: 'XFree86 :0 -bpp 16' },
+          { pid: 118, user: 'tux', cpu: 0.8, mem: 4.1, cmd: 'fvwm95 -f .fvwm2rc95' },
+          { pid: 145, user: 'tux', cpu: 0.3, mem: 2.2, cmd: 'rxvt -bg black -fg green' }
+        ];
+        this.nextPid = 210;
+      }
+
+      _logRpc(method, detail) {
+        this.rpcCount++;
+        this.rpcLog.unshift({
+          id: this.rpcCount,
+          ts: new Date().toLocaleTimeString(),
+          method,
+          detail: String(detail || '').slice(0, 60)
+        });
+        if (this.rpcLog.length > 40) this.rpcLog.pop();
+      }
+
+      normalizePath(p, base = this.cwd) {
+        if (!p || p === '~') return this.env.HOME;
+        if (p.startsWith('~/')) p = this.env.HOME + p.slice(1);
+        const raw = p.startsWith('/') ? p : (base === '/' ? '/' + p : base + '/' + p);
+        const parts = raw.split('/');
+        const out = [];
+        for (const part of parts) {
+          if (!part || part === '.') continue;
+          if (part === '..') out.pop();
+          else out.push(part);
+        }
+        return '/' + out.join('/');
+      }
+
+      readdir(dirPath) {
+        const norm = this.normalizePath(dirPath);
+        this._logRpc('vfs.readdir', norm);
+        if (!this.floppyMounted && norm.startsWith('/mnt/floppy')) {
+          throw new Error('mount: /mnt/floppy: medium not present (Floppy A: ejected)');
+        }
+        if (!this.fs[norm] || this.fs[norm].type !== 'dir') {
+          throw new Error('No such directory: ' + norm);
+        }
+        const prefix = norm === '/' ? '/' : norm + '/';
+        const entries = [];
+        for (const k of Object.keys(this.fs)) {
+          if (k !== norm && k.startsWith(prefix)) {
+            const rest = k.slice(prefix.length);
+            if (!rest.includes('/')) {
+              const node = this.fs[k];
+              entries.push({
+                name: rest,
+                path: k,
+                type: node.type,
+                size: node.content ? node.content.length : 512,
+                mode: node.mode || (node.type === 'dir' ? 'drwxr-xr-x' : '-rw-r--r--'),
+                mtime: node.mtime || 'Oct 22 1995'
+              });
+            }
+          }
+        }
+        return entries.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1));
+      }
+
+      readFile(filePath) {
+        const norm = this.normalizePath(filePath);
+        this._logRpc('vfs.readFile', norm);
+        if (!this.floppyMounted && norm.startsWith('/mnt/floppy')) {
+          throw new Error('I/O error: /dev/fd0 floppy diskette is ejected');
+        }
+        const node = this.fs[norm];
+        if (!node) throw new Error(norm + ': No such file or directory');
+        if (node.type === 'dir') throw new Error(norm + ': Is a directory');
+        return node.content || '';
+      }
+
+      writeFile(filePath, content, mode = '-rw-r--r--') {
+        const norm = this.normalizePath(filePath);
+        this._logRpc('vfs.writeFile', norm + ' (' + String(content).length + 'B)');
+        const parent = norm.slice(0, norm.lastIndexOf('/')) || '/';
+        if (!this.fs[parent]) {
+          this.mkdir(parent);
+        }
+        this.fs[norm] = {
+          type: 'file',
+          mode: this.fs[norm]?.mode || mode,
+          mtime: 'Oct 22 1995',
+          content: String(content)
+        };
+        return { ok: true, path: norm, size: String(content).length };
+      }
+
+      mkdir(dirPath) {
+        const norm = this.normalizePath(dirPath);
+        this._logRpc('vfs.mkdir', norm);
+        const parts = norm.split('/').filter(Boolean);
+        let cur = '';
+        for (const part of parts) {
+          cur += '/' + part;
+          if (!this.fs[cur]) {
+            this.fs[cur] = { type: 'dir', mode: 'drwxr-xr-x', mtime: 'Oct 22 1995' };
+          }
+        }
+        return { ok: true, path: norm };
+      }
+
+      rm(targetPath, toTrash = true) {
+        const norm = this.normalizePath(targetPath);
+        this._logRpc('vfs.unlink', norm);
+        if (norm === '/' || norm === '/home/tux' || norm === '/bin' || norm === '/etc') {
+          throw new Error('rm: cannot remove protected system directory: ' + norm);
+        }
+        if (!this.fs[norm]) throw new Error('rm: cannot remove ' + norm + ': No such file or directory');
+        if (toTrash && !norm.startsWith('/home/tux/.trash') && this.fs[norm].type === 'file') {
+          const baseName = norm.split('/').pop();
+          this.fs['/home/tux/.trash/' + baseName] = { ...this.fs[norm], origPath: norm };
+        }
+        for (const k of Object.keys(this.fs)) {
+          if (k === norm || k.startsWith(norm + '/')) {
+            delete this.fs[k];
+          }
+        }
+        return { ok: true };
+      }
+
+      setFloppyMounted(mounted) {
+        this.floppyMounted = !!mounted;
+        this._logRpc('hw.fd0', mounted ? 'MOUNT /dev/fd0 -> /mnt/floppy' : 'UMOUNT /mnt/floppy');
+        return this.floppyMounted;
+      }
+
+      getStatus() {
+        const fileCount = Object.keys(this.fs).length;
+        const totalBytes = Object.values(this.fs).reduce((acc, n) => acc + (n.content ? n.content.length : 0), 0);
+        return {
+          cwd: this.cwd,
+          uptimeSec: Math.floor((Date.now() - this.bootTime) / 1000),
+          rpcCount: this.rpcCount,
+          rpcLog: this.rpcLog.slice(0, 20),
+          processes: this.processes,
+          fileCount,
+          totalBytes,
+          floppyMounted: this.floppyMounted
+        };
+      }
+
+      spawnProcess(cmd, user = 'tux') {
+        const pid = this.nextPid++;
+        this.processes.push({ pid, user, cpu: +(Math.random() * 3 + 0.2).toFixed(1), mem: +(Math.random() * 4 + 1).toFixed(1), cmd });
+        this._logRpc('proc.spawn', 'PID ' + pid + ': ' + cmd);
+        return pid;
+      }
+
+      killProcess(pid) {
+        const n = Number(pid);
+        if (n <= 104) throw new Error('kill: (' + n + ') - Operation not permitted (core system process)');
+        const idx = this.processes.findIndex(p => p.pid === n);
+        if (idx === -1) throw new Error('kill: (' + n + ') - No such process');
+        const removed = this.processes.splice(idx, 1)[0];
+        this._logRpc('proc.kill', 'SIGKILL PID ' + n + ' (' + removed.cmd + ')');
+        return removed;
+      }
+
+      compileC(sourcePath, outName = 'a.out') {
+        const src = this.readFile(sourcePath);
+        const outPath = this.normalizePath(outName);
+        this._logRpc('gcc.compile', sourcePath + ' -> ' + outPath);
+        const binaryPayload = '#!L95_C_BIN\n' + src;
+        this.writeFile(outPath, binaryPayload, '-rwxr-xr-x');
+        return { ok: true, outPath };
+      }
+
+      runCBinary(src) {
+        const code = src.replace(/^#!L95_C_BIN\n/, '');
+        const lines = [];
+        const vars = {};
+        const varMatches = code.matchAll(/int\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*([^;]+);/g);
+        for (const m of varMatches) {
+          const name = m[1];
+          if (name === 'i') continue;
+          try {
+            const expr = m[2].replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (id) => (vars[id] !== undefined ? vars[id] : id));
+            vars[name] = Function('"use strict"; return (' + expr + ');')();
+          } catch (e) { vars[name] = 0; }
+        }
+
+        const formatPrintf = (fmt, argStr, loopVars = {}) => {
+          const allVars = { ...vars, ...loopVars };
+          const args = argStr ? argStr.split(',').map(s => s.trim()).filter(Boolean).map(expr => {
+            const rep = expr.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (id) => (allVars[id] !== undefined ? allVars[id] : id));
+            try { return Function('"use strict"; return (' + rep + ');')(); } catch { return expr.replace(/^"|"$/g, ''); }
+          }) : [];
+          let i = 0;
+          return fmt.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/%[dsf]/g, () => (args[i++] !== undefined ? args[i - 1] : ''));
+        };
+
+        const bodyMatch = code.match(/main\s*\([^)]*\)\s*\{([\s\S]*)\}/);
+        const body = bodyMatch ? bodyMatch[1] : code;
+        const tokenRegex = /for\s*\(\s*int\s+(\w+)\s*=\s*(\d+)\s*;\s*\1\s*(<=|<)\s*(\d+)\s*;\s*\1\+\+\s*\)\s*\{([^}]*)\}|printf\s*\(\s*"([^"]*)"(?:\s*,\s*([^)]*))?\s*\)\s*;/g;
+        let m;
+        while ((m = tokenRegex.exec(body)) !== null) {
+          if (m[1]) {
+            const vName = m[1];
+            const start = Number(m[2]);
+            const op = m[3];
+            const end = Number(m[4]);
+            const loopBody = m[5];
+            for (let v = start; op === '<=' ? v <= end : v < end; v++) {
+              const pRegex = /printf\s*\(\s*"([^"]*)"(?:\s*,\s*([^)]*))?\s*\)\s*;/g;
+              let pm;
+              while ((pm = pRegex.exec(loopBody)) !== null) {
+                lines.push(formatPrintf(pm[1], pm[2], { [vName]: v }));
+              }
+            }
+          } else if (m[6] !== undefined) {
+            lines.push(formatPrintf(m[6], m[7]));
+          }
+        }
+        return lines.join('');
+      }
+
+      runNodeScript(scriptPathOrCode, isRawCode = false) {
+        const code = isRawCode ? scriptPathOrCode : this.readFile(scriptPathOrCode);
+        this._logRpc('node.exec', isRawCode ? 'inline-js' : scriptPathOrCode);
+        const logs = [];
+        const mockConsole = {
+          log: (...a) => logs.push(a.map(x => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(' ')),
+          error: (...a) => logs.push('[ERR] ' + a.join(' ')),
+          warn: (...a) => logs.push('[WARN] ' + a.join(' '))
+        };
+        const self = this;
+        const mockRequire = (mod) => {
+          if (mod === 'fs') {
+            return {
+              readFileSync: (p) => self.readFile(p),
+              writeFileSync: (p, c) => self.writeFile(p, c),
+              readdirSync: (p) => self.readdir(p).map(e => e.name)
+            };
+          }
+          if (mod === 'os') {
+            return {
+              arch: () => 'i586-webcontainer',
+              platform: () => 'linux95',
+              hostname: () => self.env.HOSTNAME,
+              uptime: () => Math.floor((Date.now() - self.bootTime) / 1000)
+            };
+          }
+          if (mod === 'path') {
+            return {
+              join: (...parts) => self.normalizePath(parts.join('/'))
+            };
+          }
+          return {};
+        };
+        const mockProcess = { env: this.env, cwd: () => this.cwd, version: 'v20.11.0-webcontainer', platform: 'linux95' };
+        try {
+          const fn = new Function('console', 'require', 'process', code);
+          const ret = fn(mockConsole, mockRequire, mockProcess);
+          if (ret !== undefined && logs.length === 0) logs.push(String(ret));
+        } catch (err) {
+          logs.push('RuntimeError: ' + err.message);
+        }
+        return logs.join('\n');
+      }
+
+      runPythonScript(filePath) {
+        const code = this.readFile(filePath);
+        this._logRpc('python.exec', filePath);
+        const logs = [];
+        const vars = {};
+        const evalPyExpr = (expr) => {
+          const jsExpr = expr
+            .replace(/str\(([^)]+)\)/g, 'String($1)')
+            .replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (id) => (id === 'String' ? 'String' : (vars[id] !== undefined ? JSON.stringify(vars[id]) : id)));
+          try { return Function('"use strict"; return (' + jsExpr + ');')(); } catch { return expr; }
+        };
+        const lines = code.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const raw = lines[i];
+          const trimmed = raw.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const forMatch = trimmed.match(/^for\s+(\w+)\s+in\s+range\((\d+)\):$/);
+          if (forMatch) {
+            const loopVar = forMatch[1];
+            const limit = Number(forMatch[2]);
+            const bodyLines = [];
+            while (i + 1 < lines.length && (lines[i + 1].startsWith('  ') || lines[i + 1].startsWith('\t') || !lines[i + 1].trim())) {
+              i++;
+              if (lines[i].trim() && !lines[i].trim().startsWith('#')) bodyLines.push(lines[i].trim());
+            }
+            for (let v = 0; v < limit; v++) {
+              vars[loopVar] = v;
+              for (const bl of bodyLines) {
+                if (bl.startsWith('print(') && bl.endsWith(')')) {
+                  const inner = bl.slice(6, -1);
+                  const parts = inner.split(',').map(s => evalPyExpr(s.trim()));
+                  logs.push(parts.join(' '));
+                } else if (bl.includes('=')) {
+                  const [lhs, rhs] = bl.split('=').map(s => s.trim());
+                  vars[lhs] = evalPyExpr(rhs);
+                }
+              }
+            }
+            continue;
+          }
+          if (trimmed.startsWith('print(') && trimmed.endsWith(')')) {
+            const inner = trimmed.slice(6, -1);
+            const parts = inner.split(',').map(s => evalPyExpr(s.trim()));
+            logs.push(parts.join(' '));
+          } else if (trimmed.includes('=')) {
+            const [lhs, rhs] = trimmed.split('=').map(s => s.trim());
+            vars[lhs] = evalPyExpr(rhs);
+          }
+        }
+        return logs.join('\n');
+      }
+
+      exec(rawCmdLine) {
+        this._logRpc('shell.exec', rawCmdLine);
+        const trimmed = (rawCmdLine || '').trim();
+        if (!trimmed) return { output: '', cwd: this.cwd };
+
+        if (trimmed.includes('&&')) {
+          const parts = trimmed.split('&&').map(s => s.trim()).filter(Boolean);
+          const outs = [];
+          let guiAction = null;
+          for (const p of parts) {
+            const res = this.exec(p);
+            if (res.output) outs.push(res.output);
+            if (res.guiAction) guiAction = res.guiAction;
+            if (res.error) break;
+          }
+          return { output: outs.join('\n'), cwd: this.cwd, guiAction };
+        }
+
+        let redirectFile = null;
+        let appendMode = false;
+        let pipelineStr = trimmed;
+        if (trimmed.includes('>>')) {
+          const idx = trimmed.lastIndexOf('>>');
+          pipelineStr = trimmed.slice(0, idx).trim();
+          redirectFile = trimmed.slice(idx + 2).trim();
+          appendMode = true;
+        } else if (trimmed.includes('>')) {
+          const idx = trimmed.lastIndexOf('>');
+          pipelineStr = trimmed.slice(0, idx).trim();
+          redirectFile = trimmed.slice(idx + 1).trim();
+        }
+
+        const stages = pipelineStr.split('|').map(s => s.trim()).filter(Boolean);
+        let stdin = '';
+        let lastResult = { output: '', cwd: this.cwd };
+
+        for (const stage of stages) {
+          lastResult = this._execSingle(stage, stdin);
+          stdin = lastResult.output || '';
+        }
+
+        if (redirectFile) {
+          const target = this.normalizePath(redirectFile);
+          const prev = (appendMode && this.fs[target] && this.fs[target].content) ? this.fs[target].content : '';
+          this.writeFile(target, prev + (lastResult.output || '') + '\n');
+          return { output: '', cwd: this.cwd };
+        }
+
+        return lastResult;
+      }
+
+      _execSingle(cmdStr, stdin = '') {
+        const expanded = cmdStr.replace(/\$([A-Z_][A-Z0-9_]*)/g, (_, name) => this.env[name] || '');
+        const tokens = [];
+        const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
+        let m;
+        while ((m = re.exec(expanded)) !== null) {
+          tokens.push(m[1] !== undefined ? m[1] : (m[2] !== undefined ? m[2] : m[3]));
+        }
+        if (tokens.length === 0) return { output: '', cwd: this.cwd };
+
+        const cmd = tokens[0];
+        const args = tokens.slice(1);
+
+        try {
+          switch (cmd) {
+            case 'help':
+              return {
+                cwd: this.cwd,
+                output:
+`Linux 95 POSIX Shell (Comlink RPC Kernel v2.0.36 + WebContainer VFS)
+--------------------------------------------------------------------
+File System : ls [-la], cd, pwd, cat, touch, mkdir, rm, cp, mv, find, wc
+Development : gcc <file.c>, ./a.out, node <file.js>, python <file.py>, sh <file.sh>
+System/Proc : neofetch, uname [-a], ps, top, kill <pid>, free, df, uptime, env
+Text/Pipes  : echo, grep <pat>, head, tail, sort, rev (supports |, >, >>, &&)
+Fun & GUI   : cowsay <msg>, fortune, sl, date, open <app>, clear, reboot`
+              };
+
+            case 'clear':
+              return { output: '__CLEAR__', cwd: this.cwd };
+
+            case 'pwd':
+              return { output: this.cwd, cwd: this.cwd };
+
+            case 'whoami':
+              return { output: this.env.USER, cwd: this.cwd };
+
+            case 'hostname':
+              return { output: this.env.HOSTNAME, cwd: this.cwd };
+
+            case 'date':
+              return { output: 'Sun Oct 22 ' + new Date().toTimeString().slice(0, 8) + ' CST 1995', cwd: this.cwd };
+
+            case 'uptime': {
+              const s = Math.floor((Date.now() - this.bootTime) / 1000);
+              const mins = Math.floor(s / 60);
+              return { output: ` 14:22:09 up ${mins} min, ${s % 60} sec,  1 user,  load average: 0.08, 0.04, 0.01`, cwd: this.cwd };
+            }
+
+            case 'uname':
+              if (args.includes('-a')) {
+                return { output: 'Linux linux95 2.0.36-webcontainer-comlink #1 Sun Oct 22 14:20:00 EET 1995 i586 GNU/Linux', cwd: this.cwd };
+              }
+              return { output: 'Linux', cwd: this.cwd };
+
+            case 'cd': {
+              const target = this.normalizePath(args[0] || '~');
+              if (!this.fs[target] || this.fs[target].type !== 'dir') {
+                return { output: `cd: ${args[0]}: No such file or directory`, cwd: this.cwd, error: true };
+              }
+              this.cwd = target;
+              return { output: '', cwd: this.cwd };
+            }
+
+            case 'ls': {
+              const flags = args.filter(a => a.startsWith('-')).join('');
+              const pathArg = args.find(a => !a.startsWith('-')) || this.cwd;
+              const entries = this.readdir(pathArg);
+              if (flags.includes('l')) {
+                const lines = [`total ${entries.length * 4}`];
+                if (flags.includes('a')) {
+                  lines.push('drwxr-xr-x  2 tux  users   512 Oct 22 1995 .');
+                  lines.push('drwxr-xr-x  4 root root    512 Oct 22 1995 ..');
+                }
+                for (const e of entries) {
+                  if (!flags.includes('a') && e.name.startsWith('.')) continue;
+                  const nameStr = e.type === 'dir' ? e.name + '/' : e.name;
+                  lines.push(`${e.mode}  1 tux  users ${String(e.size).padStart(5)} ${e.mtime} ${nameStr}`);
+                }
+                return { output: lines.join('\n'), cwd: this.cwd };
+              }
+              const names = entries
+                .filter(e => flags.includes('a') || !e.name.startsWith('.'))
+                .map(e => (e.type === 'dir' ? e.name + '/' : e.name));
+              return { output: names.join('   '), cwd: this.cwd };
+            }
+
+            case 'cat': {
+              if (!args.length) return { output: stdin, cwd: this.cwd };
+              const out = args.map(a => this.readFile(a)).join('\n');
+              return { output: out, cwd: this.cwd };
+            }
+
+            case 'echo':
+              return { output: args.join(' '), cwd: this.cwd };
+
+            case 'touch': {
+              if (!args[0]) return { output: 'touch: missing file operand', cwd: this.cwd };
+              const p = this.normalizePath(args[0]);
+              if (!this.fs[p]) this.writeFile(p, '');
+              return { output: '', cwd: this.cwd };
+            }
+
+            case 'mkdir': {
+              const dirArg = args.find(a => !a.startsWith('-'));
+              if (!dirArg) return { output: 'mkdir: missing operand', cwd: this.cwd };
+              this.mkdir(dirArg);
+              return { output: '', cwd: this.cwd };
+            }
+
+            case 'rm': {
+              const targetArg = args.find(a => !a.startsWith('-'));
+              if (!targetArg) return { output: 'rm: missing operand', cwd: this.cwd };
+              this.rm(targetArg);
+              return { output: '', cwd: this.cwd };
+            }
+
+            case 'cp': {
+              if (args.length < 2) return { output: 'cp: missing destination file operand', cwd: this.cwd };
+              const content = this.readFile(args[0]);
+              this.writeFile(args[1], content);
+              return { output: '', cwd: this.cwd };
+            }
+
+            case 'mv': {
+              if (args.length < 2) return { output: 'mv: missing destination file operand', cwd: this.cwd };
+              const content = this.readFile(args[0]);
+              this.writeFile(args[1], content);
+              this.rm(args[0], false);
+              return { output: '', cwd: this.cwd };
+            }
+
+            case 'grep': {
+              const pat = args[0] || '';
+              const text = args[1] ? this.readFile(args[1]) : stdin;
+              const matched = text.split('\n').filter(l => l.toLowerCase().includes(pat.toLowerCase()));
+              return { output: matched.join('\n'), cwd: this.cwd };
+            }
+
+            case 'wc': {
+              const text = args[0] && !args[0].startsWith('-') ? this.readFile(args[0]) : stdin;
+              const lines = text ? text.split('\n').length : 0;
+              const words = text ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+              const bytes = text.length;
+              return { output: `  ${lines}  ${words}  ${bytes}`, cwd: this.cwd };
+            }
+
+            case 'head': {
+              const text = args[0] ? this.readFile(args[0]) : stdin;
+              return { output: text.split('\n').slice(0, 10).join('\n'), cwd: this.cwd };
+            }
+
+            case 'tail': {
+              const text = args[0] ? this.readFile(args[0]) : stdin;
+              return { output: text.split('\n').slice(-10).join('\n'), cwd: this.cwd };
+            }
+
+            case 'sort': {
+              const text = args[0] ? this.readFile(args[0]) : stdin;
+              return { output: text.split('\n').sort().join('\n'), cwd: this.cwd };
+            }
+
+            case 'rev': {
+              const text = args[0] ? this.readFile(args[0]) : stdin;
+              return { output: text.split('\n').map(l => l.split('').reverse().join('')).join('\n'), cwd: this.cwd };
+            }
+
+            case 'find': {
+              const root = this.normalizePath(args[0] || this.cwd);
+              const matches = Object.keys(this.fs).filter(k => k === root || k.startsWith(root === '/' ? '/' : root + '/'));
+              return { output: matches.join('\n'), cwd: this.cwd };
+            }
+
+            case 'ps':
+            case 'top': {
+              const header = '  PID USER      %CPU %MEM COMMAND';
+              const rows = this.processes.map(p =>
+                `${String(p.pid).padStart(5)} ${p.user.padEnd(9)} ${String(p.cpu).padStart(4)} ${String(p.mem).padStart(4)} ${p.cmd}`
+              );
+              return { output: [header, ...rows].join('\n'), cwd: this.cwd };
+            }
+
+            case 'kill': {
+              if (!args[0]) return { output: 'kill: usage: kill <pid>', cwd: this.cwd };
+              const killed = this.killProcess(args[0]);
+              return { output: `[Terminated] PID ${killed.pid} (${killed.cmd})`, cwd: this.cwd };
+            }
+
+            case 'free':
+              return {
+                cwd: this.cwd,
+                output:
+`             total       used       free     shared    buffers     cached
+Mem:         65536      18420      47116       4120       3200       8192
+-/+ buffers/cache:       7028      58508
+Swap:        32768          0      32768`
+              };
+
+            case 'df':
+              return {
+                cwd: this.cwd,
+                output:
+`Filesystem         1024-blocks  Used Available Capacity Mounted on
+/dev/hda1              1048576 42180   1006396      4%  /
+comlink-vfs              65536  1280     64256      2%  /home/tux
+/dev/fd0                  1440   412      1028     29%  /mnt/floppy`
+              };
+
+            case 'env':
+              return {
+                cwd: this.cwd,
+                output: Object.entries(this.env).map(([k, v]) => k + '=' + v).join('\n')
+              };
+
+            case 'export': {
+              const pair = args.join(' ');
+              if (pair.includes('=')) {
+                const [k, v] = pair.split('=');
+                this.env[k.trim()] = v.trim();
+              }
+              return { output: '', cwd: this.cwd };
+            }
+
+            case 'neofetch': {
+              const s = this.getStatus();
+              return {
+                cwd: this.cwd,
+                output:
+`        .--.          tux@linux95.localdomain
+       |o_o |         -----------------------
+       |:_/ |         OS: Linux 95 (Slackware / FVWM95) i586
+      //   \\ \\        Kernel: 2.0.36-webcontainer-comlink
+     (|     | )       Uptime: ${s.uptimeSec} secs (${s.rpcCount} Comlink RPC syscalls)
+    /'\\_   _/\`\\       Shell: /bin/sh (Comlink RPC Engine)
+    \\___)=(___/       WM: FVWM95 (Redmond95 Theme)
+                      CPU: Intel Pentium-S P54C @ 133MHz
+                      Audio: Creative Sound Blaster 16 (IRQ 5)
+                      VFS Nodes: ${s.fileCount} files (${s.totalBytes} bytes)`
+              };
+            }
+
+            case 'cowsay': {
+              const msg = args.join(' ') || stdin || 'Moo from Linux 95!';
+              const bar = '-'.repeat(msg.length + 2);
+              return {
+                cwd: this.cwd,
+                output:
+` ${bar}
+< ${msg} >
+ ${bar}
+        \\   ^__^
+         \\  (oo)\\_______
+            (__)\\       )\\/\\
+                ||----w |
+                ||     ||`
+              };
+            }
+
+            case 'fortune': {
+              const quotes = [
+                '"Talk is cheap. Show me the code." — Linus Torvalds',
+                '"640K ought to be enough for anybody." — 1995 Myth',
+                '"Software is like sex: it is better when it is free." — Linus Torvalds',
+                '"In 1995, compiling a kernel took 45 minutes and a pot of coffee."',
+                '"WebContainers + Comlink: Running an OS inside a browser tab at 60fps."'
+              ];
+              return { output: quotes[Math.floor(Math.random() * quotes.length)], cwd: this.cwd };
+            }
+
+            case 'sl':
+              return {
+                cwd: this.cwd,
+                output:
+`      ====        ________                ___________
+  _D _|  |_______/        \\__I_I_____===__|_________|
+   |(_)---  |   H\\________/ |   |        =|___ ___|      _________________
+   /     |  |   H  |  |     |   |         ||_| |_||     _|                \\_____A
+  |      |  |   H  |__--------------------| [___] |   =|                        |
+  | ________|___H__/__|_____/[][]~\\_______|       |   -|                        |
+  |/ |   |-----------I_____I [][] []  D   |=======|____|________________________|_
+__/ =| o |=-~~\\  /~~\\  /~~\\  /~~\\ ____Y___________|__|__________________________|_
+ |/-=|___|=    ||    ||    ||    |_____/~\\___/          |_D__D__D_|  |_D__D__D_|
+  \\_/      \\O=====O=====O=====O_/      \\_/               \\_/   \\_/    \\_/   \\_/`
+              };
+
+            case 'gcc':
+            case 'cc': {
+              const srcFile = args.find(a => a.endsWith('.c'));
+              if (!srcFile) return { output: 'gcc: no input files (try: gcc src/hello.c)', cwd: this.cwd };
+              const oIdx = args.indexOf('-o');
+              const outFile = oIdx !== -1 && args[oIdx + 1] ? args[oIdx + 1] : 'a.out';
+              const res = this.compileC(srcFile, outFile);
+              return { output: `[gcc 2.7.2] Compiled ${srcFile} -> ${res.outPath} (run with ./${outFile})`, cwd: this.cwd };
+            }
+
+            case 'node':
+            case 'js': {
+              if (!args[0]) return { output: 'Welcome to WebContainer Node.js v20.11.0 bridge. Usage: node <script.js>', cwd: this.cwd };
+              if (args[0] === '-e') {
+                return { output: this.runNodeScript(args.slice(1).join(' '), true), cwd: this.cwd };
+              }
+              return { output: this.runNodeScript(args[0], false), cwd: this.cwd };
+            }
+
+            case 'python': {
+              if (!args[0]) return { output: 'Python 1.3 (Oct 22 1995). Usage: python src/fib.py', cwd: this.cwd };
+              return { output: this.runPythonScript(args[0]), cwd: this.cwd };
+            }
+
+            case 'sh':
+            case 'bash': {
+              if (!args[0]) return { output: 'GNU bash, version 1.14.7(1)', cwd: this.cwd };
+              const script = this.readFile(args[0]);
+              const outs = [];
+              for (const line of script.split('\n')) {
+                const l = line.trim();
+                if (!l || l.startsWith('#')) continue;
+                const r = this.exec(l);
+                if (r.output) outs.push(r.output);
+              }
+              return { output: outs.join('\n'), cwd: this.cwd };
+            }
+
+            case 'open':
+            case 'start': {
+              const app = (args[0] || 'explorer').toLowerCase();
+              return { output: `Launching X11 GUI client: ${app}...`, cwd: this.cwd, guiAction: { type: 'open', app, arg: args[1] } };
+            }
+
+            case 'reboot':
+              return { output: 'Broadcast message from root (tty1): The system is going down for reboot NOW!', cwd: this.cwd, guiAction: { type: 'reboot' } };
+
+            default: {
+              if (cmd.startsWith('./') || cmd.startsWith('/')) {
+                const binPath = this.normalizePath(cmd);
+                const content = this.readFile(binPath);
+                if (content.startsWith('#!L95_C_BIN')) {
+                  return { output: this.runCBinary(content), cwd: this.cwd };
+                }
+                if (content.startsWith('#!/bin/sh')) {
+                  return this._execSingle('sh ' + binPath);
+                }
+                return { output: content, cwd: this.cwd };
+              }
+              return { output: `sh: ${cmd}: command not found (type 'help' for built-in commands)`, cwd: this.cwd, error: true };
+            }
+          }
+        } catch (err) {
+          return { output: err.message || String(err), cwd: this.cwd, error: true };
+        }
+      }
+    }
+
+    // Build Comlink RPC Proxy (Dedicated Web Worker + MessageChannel Comlink Endpoint + @webcontainer/api Bridge)
+    class ComlinkKernelBridge {
+      constructor() {
+        this.localKernel = new KernelEngine(INITIAL_FS);
+        this.worker = null;
+        this.comlinkProxy = null;
+        this.webcontainerInstance = null;
+        this.webcontainerStatus = window.crossOriginIsolated ? 'COOP/COEP Ready' : 'Hybrid Worker Mode';
+        this._initComlinkEndpoint();
+      }
+
+      _initComlinkEndpoint() {
+        // 1. If Comlink is loaded, expose the KernelEngine over a real MessageChannel (works on both file:// and https://)
+        if (window.Comlink) {
+          try {
+            const channel = new MessageChannel();
+            window.Comlink.expose(this.localKernel, channel.port1);
+            this.comlinkProxy = window.Comlink.wrap(channel.port2);
+          } catch (e) {
+            console.warn('Comlink MessageChannel fallback:', e);
+          }
+        }
+
+        // 2. Also spawn a dedicated Web Worker from KernelEngine.toString() when hosted over http(s)://
+        if (location.protocol.startsWith('http')) {
+          try {
+            const workerScript = `
+              const SEED = ${JSON.stringify(INITIAL_FS)};
+              const KernelEngine = ${KernelEngine.toString()};
+              const kernel = new KernelEngine(SEED);
+              self.onmessage = async (ev) => {
+                const { id, method, args, __directRpc } = ev.data || {};
+                if (!__directRpc || !method) return;
+                try {
+                  const result = await kernel[method](...(args || []));
+                  self.postMessage({ id, ok: true, result, __directRpc: true });
+                } catch (err) {
+                  self.postMessage({ id, ok: false, error: err.message || String(err), __directRpc: true });
+                }
+              };
+            `;
+            const blob = new Blob([workerScript], { type: 'application/javascript' });
+            this.worker = new Worker(URL.createObjectURL(blob));
+          } catch (e) {
+            // Handled seamlessly by Comlink MessageChannel / localKernel
+          }
+        }
+      }
+
+      async call(method, ...args) {
+        pulseHardwareLeds();
+        if (this.comlinkProxy && typeof this.comlinkProxy[method] === 'function') {
+          return await this.comlinkProxy[method](...args);
+        }
+        return await this.localKernel[method](...args);
+      }
+
+      createComlinkProxy() {
+        return new Proxy({}, {
+          get: (_, prop) => {
+            if (prop === 'then') return undefined;
+            return (...args) => this.call(String(prop), ...args);
+          }
+        });
+      }
+
+      async tryBootWebContainer() {
+        const dot = document.getElementById('wc-status-dot');
+        const label = document.getElementById('wc-status-label');
+        if (!window.crossOriginIsolated) {
+          this.webcontainerStatus = 'Comlink VFS (COOP/COEP inactive)';
+          if (label) label.textContent = 'WebContainer: Comlink Hybrid VFS';
+          return { booted: false, reason: 'crossOriginIsolated is false on this host; running full Comlink RPC VFS kernel.' };
+        }
+        if (this.webcontainerInstance) {
+          return { booted: true };
+        }
+        try {
+          if (label) label.textContent = 'WebContainer: Booting @webcontainer/api...';
+          const mod = await import('https://esm.sh/@webcontainer/api@1.1.9');
+          if (mod && mod.WebContainer) {
+            this.webcontainerInstance = await mod.WebContainer.boot();
+            const readmeContent = await this.call('readFile', '/home/tux/README.txt');
+            const benchContent = await this.call('readFile', '/home/tux/src/benchmark.js');
+            await this.webcontainerInstance.mount({
+              'README.txt': { file: { contents: readmeContent } },
+              'benchmark.js': { file: { contents: benchContent } }
+            });
+            this.webcontainerStatus = 'Native @webcontainer/api Mounted';
+            if (dot) {
+              dot.classList.remove('amber');
+              dot.classList.add('online');
+            }
+            if (label) label.textContent = 'WebContainer: Native Active';
+            return { booted: true };
+          }
+        } catch (err) {
+          this.webcontainerStatus = 'Comlink VFS Fallback (' + (err.message || 'offline') + ')';
+          if (label) label.textContent = 'WebContainer: Comlink Hybrid VFS';
+          return { booted: false, reason: err.message };
+        }
+        return { booted: false };
+      }
+    }
+
+    const kernelBridge = new ComlinkKernelBridge();
+    const kernel = kernelBridge.createComlinkProxy();
+
+    function pulseHardwareLeds() {
+      const hdd = document.getElementById('led-hdd');
+      const rpc = document.getElementById('led-rpc');
+      const topDot = document.getElementById('rpc-status-dot');
+      if (hdd) {
+        hdd.classList.add('amber-on');
+        clearTimeout(hdd._timer);
+        hdd._timer = setTimeout(() => hdd.classList.remove('amber-on'), 110);
+      }
+      if (rpc) {
+        rpc.classList.add('green-on');
+      }
+      if (topDot) {
+        topDot.classList.remove('pulse');
+        void topDot.offsetWidth;
+        topDot.classList.add('pulse');
+      }
+      sound.playHddTick();
+    }
+
+    /* ======================================================================
+       3. POWER-ON, AWARD BIOS POST, LILO & BOOT SEQUENCE CONTROLLER
+       ====================================================================== */
+    let systemState = 'OFF'; // 'OFF' | 'BOOTING' | 'DESKTOP' | 'SHUTDOWN'
+    let bootTimers = [];
+    let turboEnabled = true;
+
+    const layerPoweroff = document.getElementById('layer-poweroff');
+    const layerBoot = document.getElementById('layer-boot');
+    const layerSplash = document.getElementById('layer-splash');
+    const layerDesktop = document.getElementById('layer-desktop');
+    const layerShutdown = document.getElementById('layer-shutdown');
+    const beamLayer = document.getElementById('crt-beam-layer');
+    const bootLogArea = document.getElementById('boot-log-area');
+    const powerBtn = document.getElementById('btn-power-switch');
+    const powerCallout = document.getElementById('power-callout-badge');
+
+    function clearBootTimers() {
+      bootTimers.forEach(t => clearTimeout(t));
+      bootTimers = [];
+    }
+
+    function showLayer(layerEl) {
+      [layerPoweroff, layerBoot, layerSplash, layerDesktop, layerShutdown].forEach(el => {
+        el.classList.toggle('hidden', el !== layerEl);
+      });
+    }
+
+    function powerOnWorkstation(instant = false) {
+      if (systemState !== 'OFF' && !instant) {
+        // Turning off physical switch
+        powerOffWorkstation();
+        return;
+      }
+
+      clearBootTimers();
+      sound.playSwitchClick(true);
+      powerBtn.classList.add('powered-on');
+      powerCallout.classList.add('hidden');
+
+      beamLayer.classList.remove('turning-on');
+      if (instant) {
+        enterDesktopEnvironment();
+        return;
+      }
+      void beamLayer.offsetWidth;
+      beamLayer.classList.add('turning-on');
+
+      systemState = 'BOOTING';
+      showLayer(layerBoot);
+      bootLogArea.innerHTML = '';
+
+      sound.playPostBeep();
+      sound.playFloppySeek();
+
+      const steps = [
+        { delay: 120, text: 'Main Processor : Intel Pentium(R) P54C 133MHz (Turbo Mode)\nMath Coprocessor : Built-in FPU Present' },
+        { delay: 340, text: 'Memory Test :   640K Base Memory OK\n              65536K Extended Memory OK (EDO DRAM 60ns)' },
+        { delay: 620, text: '\nAward Plug and Play BIOS Extension v1.0A\n  Detecting IDE Primary Master   ... QUANTUM FIREBALL 1080A (1080MB)\n  Detecting IDE Secondary Master ... NEC CD-ROM DRIVE:282 4X\n  Initializing Creative Sound Blaster 16 PnP (Port 220h, IRQ 5, DMA 1)' },
+        { delay: 980, text: '\n[COMLINK] Spawning Dedicated Kernel Web Worker RPC Channel ... OK\n[WEBCONTAINER] Checking Cross-Origin Isolation (' + (window.crossOriginIsolated ? 'ENABLED' : 'Hybrid VFS Active') + ') ... OK' },
+        { delay: 1320, text: '\nLILO boot: linux95-2.0.36\nLoading linux95-2.0.36-webcontainer...............\nUncompressing Linux... Ok, booting the kernel.' },
+        { delay: 1680, text:
+`Console: 16 point font, 400 scans, VGA+ 80x25, 1 virtual console
+Calibrating delay loop.. ok - 265.42 BogoMIPS
+Memory: 63912k/65536k available (720k kernel code, 384k reserved, 512k data)
+Swansea University Computer Society TCP/IP for NET3.034
+Checking 386/387 coupling... Ok, fpu using exception 16 error reporting.
+VFS: Mounted root (comlink-ext2 filesystem) readonly.
+Adding Swap: 32768k swap-space
+INIT: version 2.64 booting
+Mounting /proc and /mnt/floppy (1.44MB 3.5" HD)... [  OK  ]
+Starting Comlink RPC syscall daemon (comlink-rpcd)... [  OK  ]
+Starting XFree86 3.1.2 + FVWM95 Window Manager... [  OK  ]` }
+      ];
+
+      steps.forEach(s => {
+        const t = setTimeout(() => {
+          bootLogArea.textContent += (bootLogArea.textContent ? '\n' : '') + s.text;
+          bootLogArea.scrollTop = bootLogArea.scrollHeight;
+          pulseHardwareLeds();
+        }, s.delay);
+        bootTimers.push(t);
+      });
+
+      bootTimers.push(setTimeout(() => {
+        showLayer(layerSplash);
+        sound.playStartupChord();
+      }, 2350));
+
+      bootTimers.push(setTimeout(() => {
+        enterDesktopEnvironment();
+      }, 3350));
+    }
+
+    function powerOffWorkstation() {
+      clearBootTimers();
+      sound.playSwitchClick(false);
+      systemState = 'OFF';
+      powerBtn.classList.remove('powered-on');
+      powerCallout.classList.remove('hidden');
+      showLayer(layerPoweroff);
+    }
+
+    function enterDesktopEnvironment() {
+      clearBootTimers();
+      systemState = 'DESKTOP';
+      powerBtn.classList.add('powered-on');
+      powerCallout.classList.add('hidden');
+      showLayer(layerDesktop);
+      renderDesktopIcons();
+      if (openWindows.size === 0) {
+        // Open Welcome Terminal + Comlink/WebContainer Status on first boot
+        openAppWindow('terminal');
+        openAppWindow('explorer');
+      }
+      kernelBridge.tryBootWebContainer();
+    }
+
+    /* ======================================================================
+       4. FVWM95 / LINUX 95 WINDOW MANAGER & DESKTOP ICONS
+       ====================================================================== */
+    const DESKTOP_SHORTCUTS = [
+      { id: 'explorer', title: 'My Linux System', icon: '🖥️' },
+      { id: 'terminal', title: 'rxvt Terminal', icon: '🐚' },
+      { id: 'editor', title: 'CodePad 95', icon: '📝' },
+      { id: 'kernel', title: 'Comlink & WebContainer', icon: '⚡' },
+      { id: 'doom', title: 'Tuxenstein 3D', icon: '🔫' },
+      { id: 'mines', title: 'TuxSweeper', icon: '💣' },
+      { id: 'paint', title: 'TuxPaint 95', icon: '🎨' },
+      { id: 'browser', title: 'Netscape 1.1N', icon: '🌐' },
+      { id: 'synth', title: 'Sound Blaster 16', icon: '🎹' },
+      { id: 'settings', title: 'Control Panel', icon: '🎛️' },
+      { id: 'trash', title: 'Recycle Bin', icon: '🗑️' }
+    ];
+
+    const openWindows = new Map();
+    let topZIndex = 20;
+    let activeWinId = null;
+
+    function renderDesktopIcons() {
+      const container = document.getElementById('desktop-icons');
+      container.innerHTML = '';
+      DESKTOP_SHORTCUTS.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'desktop-icon';
+        div.dataset.app = item.id;
+        div.innerHTML = `
+          <div class="icon-glyph">${item.icon}</div>
+          <div class="icon-label">${item.title}</div>
+        `;
+        div.addEventListener('click', (e) => {
+          e.stopPropagation();
+          document.querySelectorAll('.desktop-icon').forEach(el => el.classList.remove('selected'));
+          div.classList.add('selected');
+        });
+        div.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          openAppWindow(item.id);
+        });
+        container.appendChild(div);
+      });
+    }
+
+    function focusWindow(winId) {
+      activeWinId = winId;
+      openWindows.forEach((meta, id) => {
+        if (id === winId) {
+          meta.el.style.zIndex = ++topZIndex;
+          meta.el.classList.add('focused');
+        } else {
+          meta.el.classList.remove('focused');
+        }
+      });
+      renderTaskbar();
+    }
+
+    function closeWindow(winId) {
+      const meta = openWindows.get(winId);
+      if (!meta) return;
+      if (meta.cleanup) meta.cleanup();
+      meta.el.remove();
+      openWindows.delete(winId);
+      if (activeWinId === winId) {
+        const keys = Array.from(openWindows.keys());
+        activeWinId = keys.length ? keys[keys.length - 1] : null;
+        if (activeWinId) focusWindow(activeWinId);
+      }
+      renderTaskbar();
+    }
+
+    function toggleMinimizeWindow(winId) {
+      const meta = openWindows.get(winId);
+      if (!meta) return;
+      meta.minimized = !meta.minimized;
+      meta.el.classList.toggle('minimized', meta.minimized);
+      if (!meta.minimized) focusWindow(winId);
+      else renderTaskbar();
+    }
+
+    function toggleMaximizeWindow(winId) {
+      const meta = openWindows.get(winId);
+      if (!meta) return;
+      meta.maximized = !meta.maximized;
+      meta.el.classList.toggle('maximized', meta.maximized);
+      focusWindow(winId);
+    }
+
+    function renderTaskbar() {
+      const bar = document.getElementById('taskbar-windows');
+      bar.innerHTML = '';
+      openWindows.forEach((meta, id) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'win95-btn task-btn' + (id === activeWinId && !meta.minimized ? ' active' : '');
+        btn.innerHTML = `<span>${meta.icon}</span><span>${meta.title}</span>`;
+        btn.addEventListener('click', () => {
+          if (meta.minimized) {
+            meta.minimized = false;
+            meta.el.classList.remove('minimized');
+            focusWindow(id);
+          } else if (id === activeWinId) {
+            toggleMinimizeWindow(id);
+          } else {
+            focusWindow(id);
+          }
+        });
+        bar.appendChild(btn);
+      });
+    }
+
+    function createWindowShell({ id, title, icon, width = 560, height = 390, top = 36, left = 110, menuItems = ['File', 'Edit', 'View', 'Help'], statusText = 'Ready' }) {
+      if (openWindows.has(id)) {
+        const existing = openWindows.get(id);
+        existing.minimized = false;
+        existing.el.classList.remove('minimized');
+        focusWindow(id);
+        return existing;
+      }
+
+      const layer = document.getElementById('windows-layer');
+      const ws = document.getElementById('desktop-workspace');
+      const availW = ws ? ws.clientWidth : 800;
+      const availH = ws ? ws.clientHeight : 550;
+      const finalW = Math.min(width, Math.max(260, availW - 16));
+      const finalH = Math.min(height, Math.max(220, availH - 16));
+      const finalLeft = Math.max(8, Math.min(left, availW - finalW - 8));
+      const finalTop = Math.max(8, Math.min(top, availH - finalH - 8));
+
+      const winEl = document.createElement('div');
+      winEl.className = 'os-window focused';
+      winEl.style.width = finalW + 'px';
+      winEl.style.height = finalH + 'px';
+      winEl.style.top = finalTop + 'px';
+      winEl.style.left = finalLeft + 'px';
+      winEl.style.zIndex = ++topZIndex;
+
+      winEl.innerHTML = `
+        <div class="win-titlebar">
+          <div class="win-title-left">
+            <span>${icon}</span>
+            <span class="win-title-text">${title}</span>
+          </div>
+          <div class="win-controls">
+            <button class="win-ctrl-btn" data-act="min" title="Minimize">_</button>
+            <button class="win-ctrl-btn" data-act="max" title="Maximize">□</button>
+            <button class="win-ctrl-btn" data-act="close" title="Close">✕</button>
+          </div>
+        </div>
+        <div class="win-menubar">${menuItems.map(m => `<span><u>${m[0]}</u>${m.slice(1)}</span>`).join('')}</div>
+        <div class="win-body"></div>
+        <div class="win-statusbar">
+          <div class="status-pane">${statusText}</div>
+        </div>
+        <div class="win-resize-grip"></div>
+      `;
+
+      winEl.addEventListener('mousedown', () => focusWindow(id));
+
+      winEl.querySelector('[data-act="min"]').addEventListener('click', (e) => { e.stopPropagation(); toggleMinimizeWindow(id); });
+      winEl.querySelector('[data-act="max"]').addEventListener('click', (e) => { e.stopPropagation(); toggleMaximizeWindow(id); });
+      winEl.querySelector('[data-act="close"]').addEventListener('click', (e) => { e.stopPropagation(); closeWindow(id); });
+
+      // Titlebar double-click maximize & Dragging
+      const titlebar = winEl.querySelector('.win-titlebar');
+      titlebar.addEventListener('dblclick', () => toggleMaximizeWindow(id));
+      titlebar.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.win-controls')) return;
+        const meta = openWindows.get(id);
+        if (meta && meta.maximized) return;
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const origLeft = winEl.offsetLeft;
+        const origTop = winEl.offsetTop;
+
+        const onMove = (me) => {
+          winEl.style.left = Math.max(0, origLeft + (me.clientX - startX)) + 'px';
+          winEl.style.top = Math.max(0, origTop + (me.clientY - startY)) + 'px';
+        };
+        const onUp = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+
+      // Corner Resize Grip
+      const grip = winEl.querySelector('.win-resize-grip');
+      grip.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const origW = winEl.offsetWidth;
+        const origH = winEl.offsetHeight;
+        const onMove = (me) => {
+          winEl.style.width = Math.max(280, origW + (me.clientX - startX)) + 'px';
+          winEl.style.height = Math.max(190, origH + (me.clientY - startY)) + 'px';
+        };
+        const onUp = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+
+      layer.appendChild(winEl);
+      const meta = {
+        id,
+        title,
+        icon,
+        el: winEl,
+        body: winEl.querySelector('.win-body'),
+        statusPane: winEl.querySelector('.status-pane'),
+        minimized: false,
+        maximized: false,
+        cleanup: null
+      };
+      openWindows.set(id, meta);
+      focusWindow(id);
+      return meta;
+    }
+
+    /* ======================================================================
+       5. BUILT-IN LINUX 95 APPLICATIONS
+       ====================================================================== */
+    async function openAppWindow(appId, arg = null) {
+      document.getElementById('start-menu').classList.add('hidden');
+      document.getElementById('desktop-context-menu').classList.add('hidden');
+
+      switch (appId) {
+        case 'terminal':
+          return buildTerminalWindow(arg);
+        case 'explorer':
+          return buildExplorerWindow(arg || '/home/tux');
+        case 'trash':
+          return buildExplorerWindow('/home/tux/.trash');
+        case 'editor':
+          return buildEditorWindow(arg || '/home/tux/src/hello.c');
+        case 'kernel':
+          return buildKernelMonitorWindow();
+        case 'doom':
+          return buildDoomRaycasterWindow();
+        case 'mines':
+          return buildMinesweeperWindow();
+        case 'paint':
+          return buildPaintWindow(arg);
+        case 'browser':
+          return buildBrowserWindow(arg || 'http://localhost:8080/index.html');
+        case 'synth':
+          return buildSynthWindow();
+        case 'settings':
+          return buildSettingsWindow();
+        case 'run':
+          return buildRunDialog();
+        case 'shutdown':
+          return buildShutdownDialog();
+      }
+    }
+
+    /* --- APP 1: rxvt POSIX Terminal (Comlink + WebContainer Shell) --- */
+    async function buildTerminalWindow(initialCommand = null) {
+      const win = createWindowShell({
+        id: 'terminal',
+        title: 'rxvt — tux@linux95: /home/tux',
+        icon: '🐚',
+        width: 630,
+        height: 410,
+        top: 28,
+        left: 105,
+        statusText: 'Comlink RPC Worker Shell | Tab: Autocomplete | Up/Down: History'
+      });
+
+      if (win.body.dataset.initialized) {
+        if (initialCommand && win.runCmd) win.runCmd(initialCommand);
+        return;
+      }
+      win.body.dataset.initialized = '1';
+
+      const motd = await kernel.readFile('/etc/motd');
+      let cwd = '/home/tux';
+      const history = ['neofetch', 'gcc src/hello.c && ./a.out', 'node src/benchmark.js', 'ls -la'];
+      let histIdx = history.length;
+
+      win.body.innerHTML = `
+        <div class="term-quickbar">
+          <button class="term-chip" data-cmd="neofetch">neofetch</button>
+          <button class="term-chip" data-cmd="ls -la">ls -la</button>
+          <button class="term-chip" data-cmd="gcc src/hello.c && ./a.out">gcc hello.c &amp;&amp; ./a.out</button>
+          <button class="term-chip" data-cmd="node src/benchmark.js">node benchmark.js</button>
+          <button class="term-chip" data-cmd="python src/fib.py">python fib.py</button>
+          <button class="term-chip" data-cmd="cowsay &quot;Linux 95 Rules!&quot;">cowsay</button>
+          <button class="term-chip" data-cmd="ps">ps</button>
+          <button class="term-chip" data-cmd="sl">sl</button>
+        </div>
+        <div class="terminal-wrap win95-inset" id="term-scroll">
+          <div class="term-output" id="term-output"></div>
+          <div class="term-input-row">
+            <span class="term-prompt" id="term-prompt">tux@linux95:~$</span>
+            <input type="text" class="term-input" id="term-input" autocomplete="off" spellcheck="false" />
+          </div>
+        </div>
+      `;
+
+      const outEl = win.body.querySelector('#term-output');
+      const inputEl = win.body.querySelector('#term-input');
+      const promptEl = win.body.querySelector('#term-prompt');
+      const scrollEl = win.body.querySelector('#term-scroll');
+
+      outEl.textContent = motd;
+
+      const formatPrompt = (dir) => {
+        const shortDir = dir === '/home/tux' ? '~' : dir.replace(/^\/home\/tux/, '~');
+        return `tux@linux95:${shortDir}$`;
+      };
+
+      const executeLine = async (cmdLine) => {
+        const shortPrompt = formatPrompt(cwd);
+        outEl.textContent += `\n${shortPrompt} ${cmdLine}\n`;
+        if (cmdLine.trim()) {
+          history.push(cmdLine);
+          histIdx = history.length;
+        }
+        const res = await kernel.exec(cmdLine);
+        cwd = res.cwd || cwd;
+        promptEl.textContent = formatPrompt(cwd);
+        win.el.querySelector('.win-title-text').textContent = `rxvt — tux@linux95: ${cwd}`;
+
+        if (res.output === '__CLEAR__') {
+          outEl.textContent = '';
+        } else if (res.output) {
+          outEl.textContent += res.output + '\n';
+        }
+        scrollEl.scrollTop = scrollEl.scrollHeight;
+
+        if (res.guiAction) {
+          if (res.guiAction.type === 'open') {
+            openAppWindow(res.guiAction.app, res.guiAction.arg);
+          } else if (res.guiAction.type === 'reboot') {
+            powerOnWorkstation(false);
+          }
+        }
+      };
+
+      win.runCmd = executeLine;
+
+      win.body.querySelectorAll('.term-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          executeLine(btn.dataset.cmd);
+          inputEl.focus();
+        });
+      });
+
+      scrollEl.addEventListener('click', () => inputEl.focus());
+
+      inputEl.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+          const val = inputEl.value;
+          inputEl.value = '';
+          await executeLine(val);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (histIdx > 0) {
+            histIdx--;
+            inputEl.value = history[histIdx] || '';
+          }
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (histIdx < history.length - 1) {
+            histIdx++;
+            inputEl.value = history[histIdx] || '';
+          } else {
+            histIdx = history.length;
+            inputEl.value = '';
+          }
+        } else if (e.key === 'Tab') {
+          e.preventDefault();
+          const cur = inputEl.value;
+          const parts = cur.split(/\s+/);
+          const last = parts[parts.length - 1] || '';
+          if (parts.length <= 1) {
+            const cmds = ['help', 'ls', 'cd', 'pwd', 'cat', 'echo', 'touch', 'mkdir', 'rm', 'gcc', 'node', 'python', 'neofetch', 'cowsay', 'fortune', 'sl', 'ps', 'top', 'free', 'df', 'uname', 'clear', 'open'];
+            const hit = cmds.find(c => c.startsWith(last));
+            if (hit) inputEl.value = hit + ' ';
+          } else {
+            try {
+              const entries = await kernel.readdir(cwd);
+              const hit = entries.find(en => en.name.startsWith(last));
+              if (hit) {
+                parts[parts.length - 1] = hit.name + (hit.type === 'dir' ? '/' : '');
+                inputEl.value = parts.join(' ');
+              }
+            } catch {}
+          }
+        }
+      });
+
+      setTimeout(() => inputEl.focus(), 60);
+      if (initialCommand) executeLine(initialCommand);
+    }
+
+    /* --- APP 2: My Linux System (XFM-95 File Manager) --- */
+    async function buildExplorerWindow(startPath = '/home/tux') {
+      const win = createWindowShell({
+        id: 'explorer',
+        title: `My Linux System — ${startPath}`,
+        icon: '📁',
+        width: 560,
+        height: 370,
+        top: 65,
+        left: 440,
+        statusText: 'Virtual File System (Synced over Comlink Worker)'
+      });
+
+      let currentDir = startPath;
+
+      win.body.innerHTML = `
+        <div class="fm-toolbar">
+          <button class="win95-btn" id="fm-up" title="Up One Level">⬆️ Up</button>
+          <div class="fm-address win95-inset" id="fm-addr">${currentDir}</div>
+          <button class="win95-btn" id="fm-newfile">+ File</button>
+          <button class="win95-btn" id="fm-newdir">+ Folder</button>
+          <button class="win95-btn" id="fm-refresh">↻</button>
+        </div>
+        <div class="fm-split">
+          <div class="fm-tree win95-inset" id="fm-tree"></div>
+          <div class="fm-grid win95-inset" id="fm-grid"></div>
+        </div>
+      `;
+
+      const treeDirs = ['/', '/home/tux', '/home/tux/src', '/home/tux/pictures', '/etc', '/bin', '/proc', '/var/www', '/mnt/floppy', '/home/tux/.trash'];
+      const treeEl = win.body.querySelector('#fm-tree');
+      const gridEl = win.body.querySelector('#fm-grid');
+      const addrEl = win.body.querySelector('#fm-addr');
+
+      const getFileIcon = (entry) => {
+        if (entry.type === 'dir') return '📁';
+        if (entry.name.endsWith('.c')) return '🇨';
+        if (entry.name.endsWith('.js')) return '🟨';
+        if (entry.name.endsWith('.py')) return '🐍';
+        if (entry.name.endsWith('.html')) return '🌐';
+        if (entry.name.endsWith('.sh') || entry.mode.includes('x')) return '⚙️';
+        return '📄';
+      };
+
+      const navigateTo = async (dir) => {
+        currentDir = dir;
+        addrEl.textContent = currentDir;
+        win.el.querySelector('.win-title-text').textContent = `My Linux System — ${currentDir}`;
+
+        treeEl.innerHTML = '';
+        treeDirs.forEach(d => {
+          const item = document.createElement('div');
+          item.className = 'fm-tree-item' + (d === currentDir ? ' active' : '');
+          item.innerHTML = `<span>${d === '/home/tux/.trash' ? '🗑️' : (d === '/mnt/floppy' ? '💾' : '📁')}</span><span>${d}</span>`;
+          item.addEventListener('click', () => navigateTo(d));
+          treeEl.appendChild(item);
+        });
+
+        gridEl.innerHTML = '';
+        try {
+          const entries = await kernel.readdir(currentDir);
+          win.statusPane.textContent = `${entries.length} object(s) in ${currentDir}`;
+          if (entries.length === 0) {
+            gridEl.innerHTML = `<div style="grid-column:1/-1;color:#666;padding:12px;">(Directory is empty)</div>`;
+            return;
+          }
+          entries.forEach(entry => {
+            const cell = document.createElement('div');
+            cell.className = 'fm-item';
+            cell.innerHTML = `
+              <div class="fm-item-icon">${getFileIcon(entry)}</div>
+              <div class="fm-item-name">${entry.name}</div>
+            `;
+            cell.addEventListener('click', () => {
+              gridEl.querySelectorAll('.fm-item').forEach(x => x.classList.remove('selected'));
+              cell.classList.add('selected');
+              win.statusPane.textContent = `${entry.path} (${entry.size} bytes, ${entry.mode})`;
+            });
+            cell.addEventListener('dblclick', () => {
+              if (entry.type === 'dir') {
+                navigateTo(entry.path);
+              } else if (entry.name.endsWith('.html')) {
+                openAppWindow('browser', 'http://localhost:8080/index.html');
+              } else {
+                openAppWindow('editor', entry.path);
+              }
+            });
+            gridEl.appendChild(cell);
+          });
+        } catch (err) {
+          gridEl.innerHTML = `<div style="grid-column:1/-1;color:#b91c1c;padding:12px;font-family:var(--font-mono);">${err.message}</div>`;
+        }
+      };
+
+      win.body.querySelector('#fm-up').addEventListener('click', () => {
+        if (currentDir === '/') return;
+        const parent = currentDir.slice(0, currentDir.lastIndexOf('/')) || '/';
+        navigateTo(parent);
+      });
+
+      win.body.querySelector('#fm-refresh').addEventListener('click', () => navigateTo(currentDir));
+
+      win.body.querySelector('#fm-newfile').addEventListener('click', async () => {
+        const name = 'note_' + Math.floor(Math.random() * 900 + 100) + '.txt';
+        const full = (currentDir === '/' ? '' : currentDir) + '/' + name;
+        await kernel.writeFile(full, 'Created in Linux 95 File Manager!\n');
+        await navigateTo(currentDir);
+      });
+
+      win.body.querySelector('#fm-newdir').addEventListener('click', async () => {
+        const name = 'folder_' + Math.floor(Math.random() * 90 + 10);
+        const full = (currentDir === '/' ? '' : currentDir) + '/' + name;
+        await kernel.mkdir(full);
+        await navigateTo(currentDir);
+      });
+
+      await navigateTo(currentDir);
+    }
+
+    /* --- APP 3: CodePad 95 (Micro-IDE for C, Node.js, Python, HTML) --- */
+    async function buildEditorWindow(filePath = '/home/tux/src/hello.c') {
+      const win = createWindowShell({
+        id: 'editor',
+        title: `CodePad 95 — ${filePath}`,
+        icon: '📝',
+        width: 580,
+        height: 400,
+        top: 48,
+        left: 190,
+        statusText: `Editing ${filePath}`
+      });
+
+      let currentPath = filePath;
+      let content = '';
+      try {
+        content = await kernel.readFile(currentPath);
+      } catch (e) {
+        content = '// New file\n';
+      }
+
+      const presetFiles = [
+        '/home/tux/src/hello.c',
+        '/home/tux/src/benchmark.js',
+        '/home/tux/src/fib.py',
+        '/var/www/index.html',
+        '/home/tux/README.txt',
+        '/etc/motd'
+      ];
+
+      win.body.innerHTML = `
+        <div class="fm-toolbar">
+          <select id="ed-file-select" class="win95-inset" style="height:24px;font-family:var(--font-mono);font-size:11.5px;flex:1;">
+            ${presetFiles.map(p => `<option value="${p}" ${p === currentPath ? 'selected' : ''}>${p}</option>`).join('')}
+            ${!presetFiles.includes(currentPath) ? `<option value="${currentPath}" selected>${currentPath}</option>` : ''}
+          </select>
+          <button class="win95-btn" id="ed-save">💾 Save to VFS</button>
+          <button class="win95-btn" id="ed-run" style="font-weight:700;color:#004d40;">▶ Compile &amp; Run</button>
+        </div>
+        <textarea class="editor-Area win95-inset" id="ed-textarea" spellcheck="false"></textarea>
+      `;
+
+      const area = win.body.querySelector('#ed-textarea');
+      const sel = win.body.querySelector('#ed-file-select');
+      area.value = content;
+
+      sel.addEventListener('change', async () => {
+        currentPath = sel.value;
+        area.value = await kernel.readFile(currentPath);
+        win.el.querySelector('.win-title-text').textContent = `CodePad 95 — ${currentPath}`;
+        win.statusPane.textContent = `Loaded ${currentPath} from Comlink VFS`;
+      });
+
+      const saveCurrent = async () => {
+        const res = await kernel.writeFile(currentPath, area.value);
+        win.statusPane.textContent = `Saved ${res.path} (${res.size} bytes) to VFS at ${new Date().toLocaleTimeString()}`;
+      };
+
+      win.body.querySelector('#ed-save').addEventListener('click', saveCurrent);
+
+      win.body.querySelector('#ed-run').addEventListener('click', async () => {
+        await saveCurrent();
+        if (currentPath.endsWith('.c')) {
+          openAppWindow('terminal', `gcc ${currentPath} -o /home/tux/a.out && /home/tux/a.out`);
+        } else if (currentPath.endsWith('.js')) {
+          openAppWindow('terminal', `node ${currentPath}`);
+        } else if (currentPath.endsWith('.py')) {
+          openAppWindow('terminal', `python ${currentPath}`);
+        } else if (currentPath.endsWith('.html')) {
+          openAppWindow('browser', 'http://localhost:8080/index.html');
+        } else {
+          openAppWindow('terminal', `cat ${currentPath}`);
+        }
+      });
+    }
+
+    /* --- APP 4: Comlink & WebContainer Kernel Monitor --- */
+    async function buildKernelMonitorWindow() {
+      const win = createWindowShell({
+        id: 'kernel',
+        title: 'Comlink RPC & WebContainer API Kernel Center',
+        icon: '⚡',
+        width: 590,
+        height: 410,
+        top: 52,
+        left: 240,
+        statusText: 'Real-Time Worker RPC Telemetry & Process Table'
+      });
+
+      win.body.innerHTML = `
+        <div style="padding:8px;display:flex;flex-direction:column;gap:8px;flex:1;overflow-y:auto;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div class="win95-inset" style="padding:8px;background:#0a1017;color:#4ade80;font-family:var(--font-mono);font-size:11.5px;">
+              <div style="color:#38bdf8;font-weight:700;margin-bottom:4px;">[ COMLINK WORKER KERNEL ]</div>
+              <div id="km-rpc-stats">Loading telemetry...</div>
+            </div>
+            <div class="win95-inset" style="padding:8px;background:#0a1017;color:#facc15;font-family:var(--font-mono);font-size:11.5px;">
+              <div style="color:#f472b6;font-weight:700;margin-bottom:4px;">[ @WEBCONTAINER/API BRIDGE ]</div>
+              <div id="km-wc-stats"></div>
+              <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">
+                <button class="win95-btn" id="km-btn-boot-wc" style="font-size:10.5px;padding:2px 6px;">Boot @webcontainer/api</button>
+                <button class="win95-btn" id="km-btn-coi" style="font-size:10.5px;padding:2px 6px;">Enable COOP/COEP SW</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="win95-btn" id="km-ping-btn">⚡ Send Comlink RPC Ping</button>
+            <button class="win95-btn" id="km-spawn-btn">+ Spawn Background Daemon</button>
+            <span id="km-ping-result" style="font-family:var(--font-mono);font-size:11px;color:#0f5132;"></span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;min-height:170px;">
+            <div class="win95-inset" style="padding:6px;overflow-y:auto;font-family:var(--font-mono);font-size:11px;">
+              <div style="font-weight:700;border-bottom:1px solid #ccc;margin-bottom:4px;">Active Process Table (/proc)</div>
+              <div id="km-proc-list"></div>
+            </div>
+            <div class="win95-inset" style="padding:6px;overflow-y:auto;font-family:var(--font-mono);font-size:11px;background:#111827;color:#cbd5e1;">
+              <div style="font-weight:700;color:#38bdf8;border-bottom:1px solid #334155;margin-bottom:4px;">Live Comlink Syscall Stream</div>
+              <div id="km-rpc-log"></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const refreshStats = async () => {
+        if (!openWindows.has('kernel')) return;
+        const st = await kernel.getStatus();
+        const rpcBox = win.body.querySelector('#km-rpc-stats');
+        const wcBox = win.body.querySelector('#km-wc-stats');
+        const procBox = win.body.querySelector('#km-proc-list');
+        const logBox = win.body.querySelector('#km-rpc-log');
+
+        if (rpcBox) {
+          rpcBox.innerHTML = `
+            Syscalls Executed : <b>${st.rpcCount}</b><br>
+            VFS Inodes / Size : <b>${st.fileCount}</b> (${st.totalBytes} B)<br>
+            Kernel Uptime     : <b>${st.uptimeSec}s</b><br>
+            Floppy /dev/fd0   : <b>${st.floppyMounted ? 'MOUNTED' : 'EJECTED'}</b>
+          `;
+        }
+        if (wcBox) {
+          wcBox.innerHTML = `
+            crossOriginIsolated: <b>${window.crossOriginIsolated ? 'true' : 'false'}</b><br>
+            Engine Mode: <b>${kernelBridge.webcontainerStatus}</b>
+          `;
+        }
+        if (procBox) {
+          procBox.innerHTML = st.processes.map(p => `
+            <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dotted #e2e8f0;">
+              <span><b>${p.pid}</b> ${p.cmd}</span>
+              ${p.pid > 104 ? `<button data-kill="${p.pid}" style="font-size:10px;cursor:pointer;color:#b91c1c;">Kill</button>` : '<span style="color:#64748b;">sys</span>'}
+            </div>
+          `).join('');
+          procBox.querySelectorAll('[data-kill]').forEach(b => {
+            b.addEventListener('click', async () => {
+              await kernel.killProcess(b.dataset.kill);
+              refreshStats();
+            });
+          });
+        }
+        if (logBox) {
+          logBox.innerHTML = st.rpcLog.map(l => `<div><span style="color:#4ade80;">#${l.id}</span> [${l.ts}] <b>${l.method}</b>(${l.detail})</div>`).join('');
+        }
+      };
+
+      win.body.querySelector('#km-ping-btn').addEventListener('click', async () => {
+        const t0 = performance.now();
+        await kernel.getStatus();
+        const dt = (performance.now() - t0).toFixed(2);
+        win.body.querySelector('#km-ping-result').textContent = `RPC roundtrip: ${dt} ms`;
+        refreshStats();
+      });
+
+      win.body.querySelector('#km-spawn-btn').addEventListener('click', async () => {
+        const daemons = ['httpd -p 8080 -r /var/www', 'crond -l 8', 'tux-Indexing-worker', 'snd-sb16-mixer'];
+        const pick = daemons[Math.floor(Math.random() * daemons.length)];
+        await kernel.spawnProcess(pick);
+        refreshStats();
+      });
+
+      win.body.querySelector('#km-btn-boot-wc').addEventListener('click', async () => {
+        const res = await kernelBridge.tryBootWebContainer();
+        win.body.querySelector('#km-ping-result').textContent = res.booted ? 'WebContainer booted!' : res.reason;
+        refreshStats();
+      });
+
+      win.body.querySelector('#km-btn-coi').addEventListener('click', async () => {
+        if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+          try {
+            await navigator.serviceWorker.register('./coi-serviceworker.js');
+            win.body.querySelector('#km-ping-result').textContent = 'COOP/COEP Service Worker registered! Reload page to activate SharedArrayBuffer.';
+          } catch (e) {
+            win.body.querySelector('#km-ping-result').textContent = 'SW Note: ' + e.message;
+          }
+        } else {
+          win.body.querySelector('#km-ping-result').textContent = 'ServiceWorkers require http(s):// hosting; Comlink Worker VFS is active!';
+        }
+      });
+
+      const timer = setInterval(refreshStats, 1500);
+      win.cleanup = () => clearInterval(timer);
+      refreshStats();
+    }
+
+    /* --- APP 5: Tuxenstein 3D (Playable 60FPS Raycaster Corridor Game) --- */
+    function buildDoomRaycasterWindow() {
+      const win = createWindowShell({
+        id: 'doom',
+        title: 'Tuxenstein 3D — X11 Raycaster Engine (WASD / Arrows + Space)',
+        icon: '🔫',
+        width: 520,
+        height: 390,
+        top: 40,
+        left: 260,
+        statusText: 'W/A/S/D or Arrows: Move & Turn | SPACE: Fire Snowball Plasma'
+      });
+
+      win.body.innerHTML = `
+        <div style="flex:1;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;">
+          <canvas id="doom-canvas" width="480" height="300" style="width:100%;height:100%;image-rendering:pixelated;"></canvas>
+        </div>
+      `;
+
+      const canvas = win.body.querySelector('#doom-canvas');
+      const ctx = canvas.getContext('2d');
+
+      const map = [
+        [1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,0,0,1,0,0,0,0,1],
+        [1,0,2,2,0,0,1,0,3,0,0,1],
+        [1,0,2,0,0,0,0,0,3,0,0,1],
+        [1,0,0,0,0,2,0,0,0,0,0,1],
+        [1,0,0,3,0,2,0,1,1,0,0,1],
+        [1,0,0,3,0,0,0,0,1,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1]
+      ];
+
+      let px = 2.5, py = 2.5, pa = 0.4;
+      const keys = {};
+      let flashFrame = 0;
+      let score = 0;
+      let enemies = [
+        { x: 4.5, y: 3.5, alive: true },
+        { x: 7.5, y: 6.5, alive: true },
+        { x: 9.5, y: 2.5, alive: true }
+      ];
+
+      const onKeyDown = (e) => {
+        if (activeWinId !== 'doom') return;
+        keys[e.code] = true;
+        if (e.code === 'Space') {
+          e.preventDefault();
+          flashFrame = 6;
+          sound.playTone(190, 0.09, 'sawtooth');
+          // Check hit on enemy near crosshair angle
+          enemies.forEach(en => {
+            if (!en.alive) return;
+            const dx = en.x - px;
+            const dy = en.y - py;
+            let ang = Math.atan2(dy, dx) - pa;
+            while (ang < -Math.PI) ang += Math.PI * 2;
+            while (ang > Math.PI) ang -= Math.PI * 2;
+            if (Math.abs(ang) < 0.25 && Math.hypot(dx, dy) < 6) {
+              en.alive = false;
+              score += 250;
+              sound.playTone(520, 0.15, 'square');
+            }
+          });
+        }
+      };
+      const onKeyUp = (e) => { keys[e.code] = false; };
+      window.addEventListener('keydown', onKeyDown);
+      window.addEventListener('keyup', onKeyUp);
+
+      let animId = null;
+      const renderLoop = () => {
+        const moveSpeed = 0.055;
+        const rotSpeed = 0.045;
+        if (keys['ArrowLeft'] || keys['KeyA']) pa -= rotSpeed;
+        if (keys['ArrowRight'] || keys['KeyD']) pa += rotSpeed;
+        if (keys['ArrowUp'] || keys['KeyW']) {
+          const nx = px + Math.cos(pa) * moveSpeed;
+          const ny = py + Math.sin(pa) * moveSpeed;
+          if (map[Math.floor( py )][Math.floor( nx )] === 0) px = nx;
+          if (map[Math.floor( ny )][Math.floor( px )] === 0) py = ny;
+        }
+        if (keys['ArrowDown'] || keys['KeyS']) {
+          const nx = px - Math.cos(pa) * moveSpeed;
+          const ny = py - Math.sin(pa) * moveSpeed;
+          if (map[Math.floor( py )][Math.floor( nx )] === 0) px = nx;
+          if (map[Math.floor( ny )][Math.floor( px )] === 0) py = ny;
+        }
+
+        const W = canvas.width;
+        const H = canvas.height - 44; // Leave bottom status HUD
+
+        // Ceiling & Floor
+        ctx.fillStyle = flashFrame > 0 ? '#3b1d1d' : '#1e293b';
+        ctx.fillRect(0, 0, W, H / 2);
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(0, H / 2, W, H / 2);
+
+        const fov = Math.PI / 3;
+        const zBuf = new Array(W).fill(999);
+        for (let col = 0; col < W; col += 2) {
+          const rayAngle = (pa - fov / 2) + (col / W) * fov;
+          const cos = Math.cos(rayAngle);
+          const sin = Math.sin(rayAngle);
+          let dist = 0;
+          let hit = 0;
+          while (dist < 14 && hit === 0) {
+            dist += 0.04;
+            const tx = Math.floor(px + cos * dist);
+            const ty = Math.floor(py + sin * dist);
+            if (ty < 0 || ty >= map.length || tx < 0 || tx >= map[0].length) {
+              hit = 1;
+              dist = 14;
+            } else if (map[ty][tx] > 0) {
+              hit = map[ty][tx];
+            }
+          }
+          const perp = dist * Math.cos(rayAngle - pa);
+          zBuf[col] = zBuf[col + 1] = perp;
+          const wallH = Math.min(H, (H / Math.max(0.15, perp)));
+          const shade = Math.max(0.25, 1 - perp / 11);
+          if (hit === 1) ctx.fillStyle = `rgb(0, ${Math.floor(140 * shade)}, ${Math.floor(155 * shade)})`;
+          else if (hit === 2) ctx.fillStyle = `rgb(${Math.floor(180 * shade)}, ${Math.floor(60 * shade)}, ${Math.floor(60 * shade)})`;
+          else ctx.fillStyle = `rgb(${Math.floor(60 * shade)}, ${Math.floor(130 * shade)}, ${Math.floor(210 * shade)})`;
+          ctx.fillRect(col, (H - wallH) / 2, 2, wallH);
+        }
+
+        // Draw BSOD Bug Sprites
+        enemies.forEach(en => {
+          if (!en.alive) return;
+          const dx = en.x - px;
+          const dy = en.y - py;
+          const dist = Math.hypot(dx, dy);
+          let spriteAngle = Math.atan2(dy, dx) - pa;
+          while (spriteAngle < -Math.PI) spriteAngle += Math.PI * 2;
+          while (spriteAngle > Math.PI) spriteAngle -= Math.PI * 2;
+          if (Math.abs(spriteAngle) < fov / 1.5 && dist > 0.3) {
+            const sx = (0.5 * (spriteAngle / (fov / 2)) + 0.5) * W;
+            const sz = Math.min(H, H / dist);
+            const colIdx = Math.floor(sx);
+            if (colIdx >= 0 && colIdx < W && dist < zBuf[colIdx]) {
+              ctx.fillStyle = '#0000aa';
+              ctx.fillRect(sx - sz / 3, (H - sz) / 2 + sz * 0.15, sz * 0.66, sz * 0.7);
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 10px monospace';
+              ctx.fillText('BSOD', sx - 13, H / 2);
+            }
+          }
+        });
+
+        // Weapon & Crosshair
+        ctx.strokeStyle = '#22ff55';
+        ctx.strokeRect(W / 2 - 4, H / 2 - 4, 8, 8);
+        ctx.fillStyle = flashFrame > 0 ? '#facc15' : '#64748b';
+        ctx.fillRect(W / 2 - 18, H - (flashFrame > 0 ? 48 : 38), 36, 48);
+        if (flashFrame > 0) flashFrame--;
+
+        // Classic Doom Bottom Status Bar
+        ctx.fillStyle = '#52525b';
+        ctx.fillRect(0, H, W, 44);
+        ctx.fillStyle = '#ff2222';
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText(`SCORE: ${score}`, 14, H + 27);
+        ctx.fillStyle = '#facc15';
+        ctx.fillText('🐧 HEALTH: 100%', 175, H + 27);
+        ctx.fillStyle = '#38bdf8';
+        const remaining = enemies.filter(e => e.alive).length;
+        ctx.fillText(remaining === 0 ? 'SECTOR CLEAR!' : `BSOD BUGS: ${remaining}`, 340, H + 27);
+
+        animId = requestAnimationFrame(renderLoop);
+      };
+
+      animId = requestAnimationFrame(renderLoop);
+      win.cleanup = () => {
+        cancelAnimationFrame(animId);
+        window.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('keyup', onKeyUp);
+      };
+    }
+
+    /* --- APP 6: TuxSweeper (Minesweeper) --- */
+    function buildMinesweeperWindow() {
+      const win = createWindowShell({
+        id: 'mines',
+        title: 'TuxSweeper',
+        icon: '💣',
+        width: 280,
+        height: 345,
+        top: 80,
+        left: 360,
+        menuItems: ['Game', 'Help'],
+        statusText: 'Left-click: Reveal | Right-click: Flag 🚩'
+      });
+
+      const ROWS = 9, COLS = 9, MINES = 10;
+      let board = [];
+      let gameOver = false;
+      let flagsLeft = MINES;
+      let revealedCount = 0;
+
+      win.body.innerHTML = `
+        <div class="sweeper-wrap">
+          <div class="sweeper-hud">
+            <div class="sweeper-led" id="mine-count">010</div>
+            <button class="win95-btn" id="mine-reset" style="font-size:16px;padding:2px 6px;">😎</button>
+            <div class="sweeper-led" id="mine-timer">000</div>
+          </div>
+          <div class="sweeper-grid" id="mine-grid" style="grid-template-columns:repeat(${COLS}, 24px);"></div>
+        </div>
+      `;
+
+      const gridEl = win.body.querySelector('#mine-grid');
+      const countEl = win.body.querySelector('#mine-count');
+      const faceBtn = win.body.querySelector('#mine-reset');
+
+      const colors = ['', '#0000ff', '#008000', '#ff0000', '#000080', '#800000', '#008080', '#000000', '#808080'];
+
+      const initBoard = () => {
+        gameOver = false;
+        flagsLeft = MINES;
+        revealedCount = 0;
+        faceBtn.textContent = '🙂';
+        countEl.textContent = String(flagsLeft).padStart(3, '0');
+        board = Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => ({ mine: false, rev: false, flag: false, adj: 0 })));
+
+        let placed = 0;
+        while (placed < MINES) {
+          const r = Math.floor(Math.random() * ROWS);
+          const c = Math.floor(Math.random() * COLS);
+          if (!board[r][c].mine) {
+            board[r][c].mine = true;
+            placed++;
+          }
+        }
+
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (board[r][c].mine) continue;
+            let cnt = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                if (board[r + dr]?.[c + dc]?.mine) cnt++;
+              }
+            }
+            board[r][c].adj = cnt;
+          }
+        }
+        renderGrid();
+      };
+
+      const reveal = (r, c) => {
+        const cell = board[r]?.[c];
+        if (!cell || cell.rev || cell.flag || gameOver) return;
+        cell.rev = true;
+        revealedCount++;
+        if (cell.mine) {
+          gameOver = true;
+          faceBtn.textContent = '😵';
+          sound.playTone(110, 0.3, 'sawtooth');
+          board.forEach(row => row.forEach(x => { if (x.mine) x.rev = true; }));
+          renderGrid();
+          return;
+        }
+        if (cell.adj === 0) {
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) reveal(r + dr, c + dc);
+          }
+        }
+        if (revealedCount === ROWS * COLS - MINES) {
+          gameOver = true;
+          faceBtn.textContent = '😎';
+          sound.playStartupChord();
+        }
+      };
+
+      const renderGrid = () => {
+        gridEl.innerHTML = '';
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const cell = board[r][c];
+            const d = document.createElement('div');
+            d.className = 'mine-cell' + (cell.rev ? ' revealed' : '') + (cell.rev && cell.mine ? ' exploded' : '');
+            if (cell.rev) {
+              if (cell.mine) d.textContent = '💣';
+              else if (cell.adj > 0) {
+                d.textContent = cell.adj;
+                d.style.color = colors[cell.adj];
+              }
+            } else if (cell.flag) {
+              d.textContent = '🚩';
+            }
+            d.addEventListener('click', () => {
+              reveal(r, c);
+              renderGrid();
+            });
+            d.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+              if (cell.rev || gameOver) return;
+              cell.flag = !cell.flag;
+              flagsLeft += cell.flag ? -1 : 1;
+              countEl.textContent = String(Math.max(0, flagsLeft)).padStart(3, '0');
+              renderGrid();
+            });
+            gridEl.appendChild(d);
+          }
+        }
+      };
+
+      faceBtn.addEventListener('click', initBoard);
+      initBoard();
+    }
+
+    /* --- APP 7: TuxPaint 95 (Pixel Bitmap Canvas) --- */
+    function buildPaintWindow() {
+      const win = createWindowShell({
+        id: 'paint',
+        title: 'TuxPaint 95 — /home/tux/pictures/canvas.bmp',
+        icon: '🎨',
+        width: 520,
+        height: 380,
+        top: 60,
+        left: 220,
+        statusText: 'Draw on canvas • Save exports ASCII/Bitmap metadata to VFS'
+      });
+
+      const palette = ['#000000', '#ffffff', '#808080', '#ff0000', '#800000', '#ffff00', '#00ff00', '#008000', '#00ffff', '#008080', '#0000ff', '#000080', '#ff00ff', '#800080', '#f97316', '#ec4899'];
+      let currentColor = '#000080';
+      let brushSize = 4;
+
+      win.body.innerHTML = `
+        <div class="fm-toolbar">
+          <div style="display:flex;gap:3px;flex-wrap:wrap;">
+            ${palette.map(c => `<div class="paint-swatch" data-col="${c}" style="width:16px;height:16px;background:${c};border:1px inset #000;cursor:pointer;"></div>`).join('')}
+          </div>
+          <button class="win95-btn" id="paint-clear">Clear</button>
+          <button class="win95-btn" id="paint-save">💾 Save to VFS</button>
+        </div>
+        <div style="flex:1;padding:6px;background:#808080;overflow:hidden;display:flex;">
+          <canvas id="paint-canvas" width="470" height="270" style="background:#fff;cursor:crosshair;width:100%;height:100%;"></canvas>
+        </div>
+      `;
+
+      const canvas = win.body.querySelector('#paint-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw starter Linux 95 stamp
+      ctx.fillStyle = '#008080';
+      ctx.font = 'bold 20px monospace';
+      ctx.fillText('🐧 Linux 95 Studio', 20, 36);
+
+      let drawing = false;
+      const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (e.clientX - rect.left) * (canvas.width / rect.width),
+          y: (e.clientY - rect.top) * (canvas.height / rect.height)
+        };
+      };
+
+      canvas.addEventListener('mousedown', (e) => {
+        drawing = true;
+        const p = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+      });
+      canvas.addEventListener('mousemove', (e) => {
+        if (!drawing) return;
+        const p = getPos(e);
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = brushSize;
+        ctx.lineCap = 'round';
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      });
+      window.addEventListener('mouseup', () => { drawing = false; });
+
+      win.body.querySelectorAll('.paint-swatch').forEach(sw => {
+        sw.addEventListener('click', () => {
+          currentColor = sw.dataset.col;
+          win.statusPane.textContent = `Selected Color: ${currentColor}`;
+        });
+      });
+
+      win.body.querySelector('#paint-clear').addEventListener('click', () => {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      });
+
+      win.body.querySelector('#paint-save').addEventListener('click', async () => {
+        await kernel.writeFile('/home/tux/pictures/artwork_1995.bmp', `BITMAP_DATA_URI=${canvas.toDataURL().slice(0, 120)}...\nSaved from TuxPaint 95\n`);
+        win.statusPane.textContent = 'Saved /home/tux/pictures/artwork_1995.bmp to Comlink VFS!';
+      });
+    }
+
+    /* --- APP 8: Netscape Navigator 1.1N (Retro Web & Live VFS Localhost) --- */
+    async function buildBrowserWindow(initialUrl = 'http://localhost:8080/index.html') {
+      const win = createWindowShell({
+        id: 'browser',
+        title: 'Netscape Navigator 1.1N — [Linux 95 X11]',
+        icon: '🌐',
+        width: 580,
+        height: 410,
+        top: 38,
+        left: 165,
+        statusText: 'Document: Done (Connected to Local VFS & 1995 WebRing)'
+      });
+
+      win.body.innerHTML = `
+        <div class="fm-toolbar">
+          <button class="win95-btn" data-url="http://localhost:8080/index.html">🏠 Localhost (/var/www)</button>
+          <button class="win95-btn" data-url="http://www.kernel.org/1995/">🐧 Kernel.org '95</button>
+          <button class="win95-btn" data-url="http://webcontainer.local/arch">⚡ Architecture</button>
+          <button class="win95-btn" id="ns-edit-html">📝 Edit HTML</button>
+        </div>
+        <div class="fm-toolbar" style="padding-top:0;">
+          <span style="font-size:11px;">Location:</span>
+          <input type="text" id="ns-url" class="win95-inset" style="flex:1;height:22px;padding:0 6px;font-family:var(--font-mono);font-size:11.5px;" value="${initialUrl}" />
+          <button class="win95-btn" id="ns-go">Reload</button>
+        </div>
+        <div id="ns-viewport" class="win95-inset" style="flex:1;overflow-y:auto;padding:14px;background:#fff;color:#000;font-family:serif;line-height:1.5;"></div>
+      `;
+
+      const urlInput = win.body.querySelector('#ns-url');
+      const viewport = win.body.querySelector('#ns-viewport');
+
+      const loadPage = async (url) => {
+        urlInput.value = url;
+        if (url.includes('localhost')) {
+          const html = await kernel.readFile('/var/www/index.html');
+          viewport.innerHTML = html;
+          win.statusPane.textContent = 'Rendered /var/www/index.html live from Comlink VFS';
+        } else if (url.includes('kernel.org')) {
+          viewport.innerHTML = `
+            <div style="font-family:Georgia,serif;">
+              <h2 style="color:#000080;border-bottom:2px solid #000080;">The Linux Kernel Archives (Oct 1995 Mirror)</h2>
+              <p><b>Latest Stable Kernel:</b> <code>linux-2.0.36.tar.gz</code> (5.8 MB)</p>
+              <p style="margin-top:8px;">Linux is a clone of the operating system Unix, written from scratch by <b>Linus Torvalds</b> with assistance from a loosely-knit team of hackers across the Net.</p>
+              <blockquote style="background:#f1f5f9;padding:8px;border-left:3px solid #008080;margin:10px 0;font-family:monospace;font-size:12px;">
+                "Hello everybody out there using minix - I'm doing a (free) operating system (just a hobby, won't be big and professional like gnu) for 386(486) AT clones."
+              </blockquote>
+              <p>Try compiling C code right now in <b>rxvt Terminal</b>: <code>gcc src/hello.c &amp;&amp; ./a.out</code></p>
+            </div>
+          `;
+        } else {
+          viewport.innerHTML = `
+            <div style="font-family:sans-serif;">
+              <h2 style="color:#0f766e;">How Linux 95 Works Under the Hood</h2>
+              <p style="margin-top:6px;">This single-page application combines three layers:</p>
+              <ol style="margin:10px 0 10px 20px;">
+                <li><b>Comlink RPC Kernel Worker:</b> Every file read/write, shell pipeline, process spawn, and compiler call runs asynchronously inside a dedicated Web Worker via Comlink RPC proxies.</li>
+                <li><b>StackBlitz @webcontainer/api Bridge:</b> Automatically detects <code>window.crossOriginIsolated</code> to boot a native WebContainer instance or seamlessly run the built-in POSIX/Node/C/Python micro-kernel.</li>
+                <li><b>FVWM95 + Trinitron CRT Hardware Emulation:</b> Synthesizes authentic Web Audio API CRT degauss coils, floppy seek clicks, and 3D beveled 1995 windows.</li>
+              </ol>
+            </div>
+          `;
+        }
+      };
+
+      win.body.querySelectorAll('[data-url]').forEach(b => {
+        b.addEventListener('click', () => loadPage(b.dataset.url));
+      });
+      win.body.querySelector('#ns-go').addEventListener('click', () => loadPage(urlInput.value));
+      win.body.querySelector('#ns-edit-html').addEventListener('click', () => openAppWindow('editor', '/var/www/index.html'));
+
+      loadPage(initialUrl);
+    }
+
+    /* --- APP 9: Sound Blaster 16 FM Synth Rack --- */
+    function buildSynthWindow() {
+      const win = createWindowShell({
+        id: 'synth',
+        title: 'Sound Blaster 16 — FM Chiptune & Diagnostics',
+        icon: '🎹',
+        width: 420,
+        height: 270,
+        top: 110,
+        left: 310,
+        statusText: 'IRQ 5 • DMA 1 • OPL3 FM Synthesis Active'
+      });
+
+      const notes = [
+        { label: 'C4', f: 261.63 },
+        { label: 'D4', f: 293.66 },
+        { label: 'E4', f: 329.63 },
+        { label: 'F4', f: 349.23 },
+        { label: 'G4', f: 392.00 },
+        { label: 'A4', f: 440.00 },
+        { label: 'B4', f: 493.88 },
+        { label: 'C5', f: 523.25 }
+      ];
+
+      win.body.innerHTML = `
+        <div style="padding:10px;display:flex;flex-direction:column;gap:10px;flex:1;">
+          <div class="win95-inset" style="background:#05100a;color:#22ff55;padding:10px;font-family:var(--font-vga);font-size:20px;display:flex;justify-content:space-between;">
+            <span>CREATIVE SOUND BLASTER 16 ASP</span>
+            <span id="sb-freq-readout">READY</span>
+          </div>
+          <div style="display:flex;gap:4px;">
+            ${notes.map(n => `<button class="win95-btn sb-key" data-freq="${n.f}" style="flex:1;height:68px;align-items:flex-end;padding-bottom:6px;font-weight:700;">${n.label}</button>`).join('')}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="win95-btn" id="sb-chime">🎵 Play 95 Startup Chord</button>
+            <button class="win95-btn" id="sb-post">🔔 BIOS POST Beep</button>
+            <button class="win95-btn" id="sb-floppy">💾 Floppy Seek</button>
+          </div>
+        </div>
+      `;
+
+      const readout = win.body.querySelector('#sb-freq-readout');
+      win.body.querySelectorAll('.sb-key').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const f = Number(btn.dataset.freq);
+          readout.textContent = f + ' Hz';
+          sound.playTone(f, 0.24, 'triangle');
+        });
+      });
+      win.body.querySelector('#sb-chime').addEventListener('click', () => sound.playStartupChord());
+      win.body.querySelector('#sb-post').addEventListener('click', () => sound.playPostBeep());
+      win.body.querySelector('#sb-floppy').addEventListener('click', () => sound.playFloppySeek());
+    }
+
+    /* --- APP 10: Control Panel & Display Properties --- */
+    function buildSettingsWindow() {
+      const win = createWindowShell({
+        id: 'settings',
+        title: 'Control Panel — Display & Hardware Properties',
+        icon: '🎛️',
+        width: 420,
+        height: 310,
+        top: 90,
+        left: 290,
+        statusText: 'Customize FVWM95 Desktop & Trinitron CRT settings'
+      });
+
+      win.body.innerHTML = `
+        <div style="padding:12px;display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <div style="font-weight:700;margin-bottom:6px;">Desktop Wallpaper Preset:</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="win95-btn" data-wp="wp-teal">Classic Teal</button>
+              <button class="win95-btn" data-wp="wp-grid">CAD Matrix Grid</button>
+              <button class="win95-btn" data-wp="wp-slackware">Slackware Dark</button>
+              <button class="win95-btn" data-wp="wp-tartan">Red Hat Tartan</button>
+              <button class="win95-btn" data-wp="wp-clouds">95 Clouds</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-weight:700;margin-bottom:6px;">CRT Hardware &amp; Monitor Effects:</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="win95-btn" id="cp-degauss">🧲 Trigger CRT Degauss</button>
+              <button class="win95-btn" id="cp-scanlines">📺 Cycle Scanlines</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-weight:700;margin-bottom:6px;">Power &amp; Boot Sequence:</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="win95-btn" id="cp-reboot">↻ Replay Full BIOS + LILO Boot</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      win.body.querySelectorAll('[data-wp]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          layerDesktop.className = 'screen-layer ' + btn.dataset.wp;
+        });
+      });
+
+      win.body.querySelector('#cp-degauss').addEventListener('click', triggerDegauss);
+      win.body.querySelector('#cp-scanlines').addEventListener('click', cycleScanlines);
+      win.body.querySelector('#cp-reboot').addEventListener('click', () => powerOnWorkstation(false));
+    }
+
+    /* --- APP 11: Run Dialog & Shutdown Dialog --- */
+    function buildRunDialog() {
+      const win = createWindowShell({
+        id: 'run',
+        title: 'Run Command',
+        icon: '🚀',
+        width: 360,
+        height: 185,
+        top: 170,
+        left: 330,
+        menuItems: [],
+        statusText: 'Type the name of a program, script, or VFS path'
+      });
+
+      win.body.innerHTML = `
+        <div style="padding:12px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;gap:10px;align-items:center;">
+            <span style="font-size:24px;">🚀</span>
+            <span>Type a POSIX shell command or application name, and Linux 95 will execute it via Comlink.</span>
+          </div>
+          <input type="text" id="run-input" class="win95-inset" style="height:24px;padding:0 6px;font-family:var(--font-mono);" value="cowsay &quot;Hello from Run!&quot;" />
+          <div style="display:flex;justify-content:flex-end;gap:6px;">
+            <button class="win95-btn" id="run-ok" style="min-width:70px;font-weight:700;">OK</button>
+            <button class="win95-btn" id="run-cancel" style="min-width:70px;">Cancel</button>
+          </div>
+        </div>
+      `;
+
+      const inp = win.body.querySelector('#run-input');
+      win.body.querySelector('#run-ok').addEventListener('click', () => {
+        const cmd = inp.value;
+        closeWindow('run');
+        openAppWindow('terminal', cmd);
+      });
+      win.body.querySelector('#run-cancel').addEventListener('click', () => closeWindow('run'));
+    }
+
+    function buildShutdownDialog() {
+      const win = createWindowShell({
+        id: 'shutdown',
+        title: 'Shut Down Linux 95',
+        icon: '⏻',
+        width: 350,
+        height: 210,
+        top: 150,
+        left: 340,
+        menuItems: [],
+        statusText: 'Select shutdown action'
+      });
+
+      win.body.innerHTML = `
+        <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+          <div style="font-weight:700;">Are you sure you want to:</div>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="sd-opt" value="halt" checked /> Shut down the computer
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="sd-opt" value="reboot" /> Restart the computer (Full BIOS + LILO Boot)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="sd-opt" value="poweroff" /> Switch off CRT monitor power
+          </label>
+          <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:6px;">
+            <button class="win95-btn" id="sd-yes" style="min-width:75px;font-weight:700;">Yes</button>
+            <button class="win95-btn" id="sd-no" style="min-width:75px;">No</button>
+          </div>
+        </div>
+      `;
+
+      win.body.querySelector('#sd-yes').addEventListener('click', () => {
+        const val = win.body.querySelector('input[name="sd-opt"]:checked').value;
+        closeWindow('shutdown');
+        if (val === 'halt') {
+          systemState = 'SHUTDOWN';
+          showLayer(layerShutdown);
+        } else if (val === 'reboot') {
+          systemState = 'OFF';
+          powerOnWorkstation(false);
+        } else {
+          powerOffWorkstation();
+        }
+      });
+      win.body.querySelector('#sd-no').addEventListener('click', () => closeWindow('shutdown'));
+    }
+
+    /* ======================================================================
+       6. HARDWARE CONTROLS, START MENU, CLOCK & EVENT BINDINGS
+       ====================================================================== */
+    function triggerDegauss() {
+      const scr = document.getElementById('crt-screen');
+      sound.playDegaussCoil();
+      scr.classList.remove('degaussing');
+      void scr.offsetWidth;
+      scr.classList.add('degaussing');
+    }
+
+    const scanlineModes = ['scanlines-subtle', 'scanlines-heavy', 'scanlines-off'];
+    const scanlineLabels = ['📺 CRT: Subtle', '📺 CRT: Heavy', '📺 CRT: Crisp'];
+    let scanlineIdx = 0;
+
+    function cycleScanlines() {
+      const ov = document.getElementById('crt-overlay');
+      const btn = document.getElementById('btn-scanlines');
+      ov.classList.remove(...scanlineModes);
+      scanlineIdx = (scanlineIdx + 1) % scanlineModes.length;
+      ov.classList.add(scanlineModes[scanlineIdx]);
+      btn.textContent = scanlineLabels[scanlineIdx];
+    }
+
+    // Bind Power Switch & Screen Click
+    document.getElementById('btn-power-switch').addEventListener('click', () => powerOnWorkstation(false));
+    document.getElementById('layer-poweroff').addEventListener('click', () => powerOnWorkstation(false));
+    document.getElementById('btn-skip-boot').addEventListener('click', () => enterDesktopEnvironment());
+    document.getElementById('btn-instant-desktop').addEventListener('click', () => powerOnWorkstation(true));
+    document.getElementById('btn-reboot-from-shutdown').addEventListener('click', () => {
+      systemState = 'OFF';
+      powerOnWorkstation(false);
+    });
+
+    // Bezel Controls
+    document.getElementById('btn-degauss').addEventListener('click', triggerDegauss);
+    document.getElementById('btn-scanlines').addEventListener('click', cycleScanlines);
+    document.getElementById('btn-reset-hw').addEventListener('click', () => {
+      systemState = 'OFF';
+      powerOnWorkstation(false);
+    });
+
+    // Turbo Button
+    document.getElementById('btn-turbo').addEventListener('click', (e) => {
+      turboEnabled = !turboEnabled;
+      const led = document.getElementById('turbo-led-display');
+      const btn = e.currentTarget;
+      sound.playSwitchClick(turboEnabled);
+      btn.classList.toggle('pressed', turboEnabled);
+      led.textContent = turboEnabled ? '133' : ' 66';
+      led.classList.toggle('slow', !turboEnabled);
+    });
+
+    // Floppy Drive Bay
+    const toggleFloppyDiskette = async () => {
+      const bay = document.getElementById('floppy-bay');
+      const ejected = bay.classList.toggle('ejected');
+      sound.playFloppySeek();
+      await kernel.setFloppyMounted(!ejected);
+    };
+    document.getElementById('btn-floppy-slot').addEventListener('click', toggleFloppyDiskette);
+    document.getElementById('btn-floppy-eject').addEventListener('click', toggleFloppyDiskette);
+
+    // Topbar Fullscreen & Audio Toggles
+    document.getElementById('btn-toggle-fullscreen').addEventListener('click', (e) => {
+      const isFs = document.body.classList.toggle('fullscreen-os');
+      e.currentTarget.textContent = isFs ? '🖥️ CRT Bezel View' : '🖥️ Fullscreen View';
+    });
+
+    const toggleAudio = () => {
+      sound.enabled = !sound.enabled;
+      document.getElementById('btn-toggle-audio').textContent = sound.enabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+      document.getElementById('tray-sound').textContent = sound.enabled ? '🔊' : '🔇';
+    };
+    document.getElementById('btn-toggle-audio').addEventListener('click', toggleAudio);
+    document.getElementById('tray-sound').addEventListener('click', toggleAudio);
+    document.getElementById('tray-wc').addEventListener('click', () => openAppWindow('kernel'));
+
+    // Start Menu & Desktop Context Menu
+    const startBtn = document.getElementById('btn-start');
+    const startMenu = document.getElementById('start-menu');
+    const ctxMenu = document.getElementById('desktop-context-menu');
+
+    startBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startMenu.classList.toggle('hidden');
+      ctxMenu.classList.add('hidden');
+    });
+
+    startMenu.querySelectorAll('[data-launch]').forEach(item => {
+      item.addEventListener('click', () => openAppWindow(item.dataset.launch));
+    });
+
+    const workspace = document.getElementById('desktop-workspace');
+    workspace.addEventListener('click', () => {
+      startMenu.classList.add('hidden');
+      ctxMenu.classList.add('hidden');
+      document.querySelectorAll('.desktop-icon').forEach(el => el.classList.remove('selected'));
+    });
+
+    workspace.addEventListener('contextmenu', (e) => {
+      if (e.target.closest('.os-window')) return;
+      e.preventDefault();
+      startMenu.classList.add('hidden');
+      const rect = workspace.getBoundingClientRect();
+      ctxMenu.style.left = Math.min(rect.width - 190, e.clientX - rect.left) + 'px';
+      ctxMenu.style.top = Math.min(rect.height - 175, e.clientY - rect.top) + 'px';
+      ctxMenu.classList.remove('hidden');
+    });
+
+    const wpList = ['wp-teal', 'wp-grid', 'wp-slackware', 'wp-tartan', 'wp-clouds'];
+    let wpIdx = 0;
+    ctxMenu.querySelectorAll('[data-ctx]').forEach(item => {
+      item.addEventListener('click', async () => {
+        const act = item.dataset.ctx;
+        ctxMenu.classList.add('hidden');
+        if (act === 'terminal') openAppWindow('terminal');
+        else if (act === 'explorer') openAppWindow('explorer');
+        else if (act === 'kernel') openAppWindow('kernel');
+        else if (act === 'settings') openAppWindow('settings');
+        else if (act === 'new-file') {
+          const p = `/home/tux/note_${Math.floor(Math.random() * 900 + 100)}.txt`;
+          await kernel.writeFile(p, 'Hello from Linux 95 Desktop!\n');
+          openAppWindow('editor', p);
+        } else if (act === 'wallpaper') {
+          wpIdx = (wpIdx + 1) % wpList.length;
+          layerDesktop.className = 'screen-layer ' + wpList[wpIdx];
+        }
+      });
+    });
+
+    // Keyboard shortcut on initial standby screen (Enter / Space powers on; Enter during BIOS skips to Desktop)
+    window.addEventListener('keydown', (e) => {
+      if (systemState === 'OFF' && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        powerOnWorkstation(false);
+      } else if (systemState === 'BOOTING' && e.key === 'Enter') {
+        e.preventDefault();
+        enterDesktopEnvironment();
+      }
+    });
+
+    // System Tray Clock
+    const updateClock = () => {
+      const now = new Date();
+      const clockEl = document.getElementById('tray-clock');
+      if (clockEl) {
+        clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+    };
+    updateClock();
+    setInterval(updateClock, 15000);
+
+    // Optional URL query parameter support (?boot=desktop | ?boot=bios | ?app=doom,kernel)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('boot') === 'desktop') {
+      powerOnWorkstation(true);
+      const extraApps = (params.get('app') || '').split(',').filter(Boolean);
+      extraApps.forEach(a => openAppWindow(a));
+    } else if (params.get('boot') === 'bios') {
+      powerOnWorkstation(false);
+    }
+  </script>
+</body>
+</html>
