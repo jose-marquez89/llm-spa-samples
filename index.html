@@ -3,80 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Web Experiments — Jose Marquez</title>
-  <meta name="description" content="A curated collection of specialized static web applications and single-page apps generated with AI." />
+  <title>Sandbox — small web projects</title>
+  <meta name="description" content="A handful of single-page web projects: study tools, explainers and the occasional toy." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
+    /*
+      Landing page — neutral "index card / notebook" look.
+      Warm paper background, ink text, one burnt-orange accent, numbered project list.
+      Intentionally NOT themed per topic; the small colour swatch on each row is the only
+      nod to each app's own theme.
+    */
     :root {
-      --bg: #070a12;
-      --bg-card: rgba(15, 23, 42, 0.65);
-      --bg-card-hover: rgba(24, 34, 61, 0.85);
-      --border: rgba(148, 163, 184, 0.12);
-      --border-hover: rgba(56, 189, 248, 0.4);
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --cyan: #38bdf8;
-      --teal: #2dd4bf;
-      --indigo: #818cf8;
-      --rose: #fb7185;
-      --amber: #fbbf24;
-      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
+      --bg: #f4f1ea;
+      --bg-raised: #fbf9f4;
+      --ink: #1c1b19;
+      --muted: #6b665c;
+      --faint: #9a948a;
+      --rule: #d9d3c6;
+      --accent: #c2410c;
+      --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+      --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #161513;
+        --bg-raised: #1d1c19;
+        --ink: #ece8df;
+        --muted: #a39d91;
+        --faint: #6f6a61;
+        --rule: #34312c;
+        --accent: #f0803c;
+      }
     }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background-color: var(--bg);
-      background-image: 
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56, 189, 248, 0.15), transparent 70%),
-        radial-gradient(circle at 10% 40%, rgba(45, 212, 191, 0.08), transparent 40%),
-        radial-gradient(circle at 90% 70%, rgba(129, 140, 248, 0.08), transparent 45%);
-      background-attachment: fixed;
-      color: var(--text);
+      background: var(--bg);
+      color: var(--ink);
       font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.6;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      line-height: 1.6;
       -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
     }
 
-    /* Ambient top glow bar */
-    .top-glow {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--cyan), var(--teal), transparent);
-      z-index: 100;
-    }
+    a { color: inherit; }
+
+    ::selection { background: var(--accent); color: var(--bg); }
 
     .container {
-      max-width: 1100px;
+      max-width: 920px;
       width: 100%;
       margin: 0 auto;
-      padding: 0 24px;
+      padding: 0 28px;
     }
 
-    /* Header Nav */
+    /* Header */
     header {
-      padding: 24px 0;
-      border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: rgba(7, 10, 18, 0.75);
+      border-bottom: 1px solid var(--rule);
     }
 
     .header-inner {
@@ -84,370 +75,185 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
+      padding: 22px 0;
     }
 
-    .logo-group {
+    .wordmark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    .wordmark-mark {
+      width: 12px;
+      height: 12px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    .wordmark-sub { color: var(--faint); font-weight: 400; }
+
+    .header-links {
+      display: flex;
+      gap: 20px;
+      font-size: 14px;
+    }
+
+    .header-links a,
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+
+    .header-links a:hover,
+    .footer-links a:hover { color: var(--accent); }
+
+    /* Intro */
+    .intro {
+      padding: 88px 0 56px;
+    }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--faint);
+      margin-bottom: 20px;
+    }
+
+    .intro h1 {
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: clamp(42px, 7vw, 68px);
+      line-height: 1.02;
+      letter-spacing: -0.01em;
+      max-width: 14ch;
+      margin-bottom: 24px;
+    }
+
+    .intro h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .intro p {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 56ch;
+    }
+
+    /* Project list */
+    .projects {
+      padding: 0 0 96px;
+      flex: 1;
+    }
+
+    .list-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--faint);
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .project-list { list-style: none; }
+
+    .project {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 8px 24px;
+      align-items: start;
+      padding: 28px 0;
+      border-bottom: 1px solid var(--rule);
+      text-decoration: none;
+      position: relative;
+    }
+
+    .project-num {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--faint);
+      padding-top: 8px;
+    }
+
+    .project-title {
       display: flex;
       align-items: center;
       gap: 12px;
-      text-decoration: none;
-      color: inherit;
-    }
-
-    .logo-badge {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #0284c7, #0d9488);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 16px;
-      color: white;
-      box-shadow: 0 0 20px rgba(14, 165, 233, 0.4);
-    }
-
-    .logo-title {
-      font-weight: 700;
-      font-size: 17px;
-      letter-spacing: -0.02em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .logo-tag {
-      font-size: 11px;
-      padding: 2px 7px;
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      color: var(--cyan);
-      border-radius: 999px;
-      font-family: var(--font-mono);
-      font-weight: 500;
-    }
-
-    .social-links {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .social-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-size: 13.5px;
-      font-weight: 500;
-      text-decoration: none;
-      color: var(--text-muted);
-      background: rgba(30, 41, 59, 0.5);
-      border: 1px solid var(--border);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .social-btn:hover {
-      color: var(--text);
-      background: rgba(51, 65, 85, 0.7);
-      border-color: rgba(148, 163, 184, 0.3);
-      transform: translateY(-1px);
-    }
-
-    .social-btn svg {
-      width: 16px;
-      height: 16px;
-      fill: currentColor;
-    }
-
-    /* Hero Section */
-    .hero {
-      padding: 72px 0 48px;
-      text-align: center;
-      max-width: 780px;
-      margin: 0 auto;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: rgba(56, 189, 248, 0.08);
-      border: 1px solid rgba(56, 189, 248, 0.22);
-      color: var(--cyan);
-      font-size: 12.5px;
-      font-family: var(--font-mono);
-      margin-bottom: 24px;
-      font-weight: 500;
-    }
-
-    .hero-badge-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--teal);
-      box-shadow: 0 0 8px var(--teal);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
-    }
-
-    .hero h1 {
-      font-size: clamp(32px, 5vw, 48px);
-      font-weight: 800;
-      letter-spacing: -0.03em;
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: 32px;
       line-height: 1.15;
-      margin-bottom: 20px;
-      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .hero p {
-      font-size: 17px;
-      color: var(--text-muted);
-      line-height: 1.7;
-      margin-bottom: 32px;
-    }
-
-    .tech-pills {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .tech-pill {
-      font-size: 12px;
-      font-family: var(--font-mono);
-      padding: 4px 10px;
-      background: rgba(30, 41, 59, 0.5);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: #cbd5e1;
-    }
-
-    /* Showcase Section */
-    .showcase {
-      padding: 32px 0 80px;
-      flex: 1;
-    }
-
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .section-title {
-      font-size: 19px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .section-count {
-      font-size: 12px;
-      font-family: var(--font-mono);
-      color: var(--text-muted);
-      padding: 2px 8px;
-      background: rgba(148, 163, 184, 0.1);
-      border-radius: 999px;
-    }
-
-    /* Grid layout */
-    .apps-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      gap: 24px;
-    }
-
-    /* App Card */
-    .app-card {
-      position: relative;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      text-decoration: none;
-      color: inherit;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      overflow: hidden;
-    }
-
-    .app-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, #0ea5e9, #14b8a6);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .app-card:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-hover);
-      transform: translateY(-4px);
-      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.15);
-    }
-
-    .app-card:hover::before {
-      opacity: 1;
-    }
-
-    .card-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 18px;
-    }
-
-    .app-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(45, 212, 191, 0.15));
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-family: var(--font-mono);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .status-badge.live {
-      background: rgba(34, 197, 94, 0.12);
-      border: 1px solid rgba(34, 197, 94, 0.3);
-      color: #4ade80;
-    }
-
-    .status-badge.live::before {
-      content: '';
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #4ade80;
-      box-shadow: 0 0 6px #4ade80;
-    }
-
-    .status-badge.soon {
-      background: rgba(148, 163, 184, 0.1);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      color: var(--text-muted);
-    }
-
-    .app-title {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
       margin-bottom: 8px;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
     }
 
-    .app-card:hover .app-title {
-      color: var(--cyan);
+    .swatch {
+      flex: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--swatch, var(--faint));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--swatch, var(--faint)) 18%, transparent);
     }
 
-    .app-desc {
-      color: var(--text-muted);
-      font-size: 14px;
-      line-height: 1.6;
-      margin-bottom: 20px;
-      flex: 1;
+    .project-desc {
+      color: var(--muted);
+      font-size: 15.5px;
+      max-width: 60ch;
+      margin-bottom: 14px;
     }
 
-    .card-tags {
+    .project-tags {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 20px;
-    }
-
-    .tag {
-      font-size: 11px;
+      gap: 6px 14px;
       font-family: var(--font-mono);
-      padding: 3px 8px;
-      border-radius: 5px;
-      background: rgba(30, 41, 59, 0.7);
-      border: 1px solid rgba(148, 163, 184, 0.15);
-      color: #94a3b8;
+      font-size: 12px;
+      color: var(--faint);
     }
 
-    .card-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
-      font-size: 13.5px;
-      font-weight: 600;
-      color: var(--cyan);
+    .project-open {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      padding-top: 10px;
+      white-space: nowrap;
+      transition: color 0.15s ease;
     }
 
-    .card-arrow {
+    .project-open span {
+      display: inline-block;
       transition: transform 0.2s ease;
     }
 
-    .app-card:hover .card-arrow {
-      transform: translateX(4px);
+    a.project:hover .project-title { color: var(--accent); }
+    a.project:hover .project-open { color: var(--accent); }
+    a.project:hover .project-open span { transform: translateX(4px); }
+
+    a.project:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
     }
 
-    /* Placeholder / Coming Soon Card */
-    .placeholder-card {
-      border-style: dashed;
-      background: rgba(15, 23, 42, 0.25);
-      opacity: 0.8;
-      cursor: default;
-    }
-
-    .placeholder-card:hover {
-      transform: none;
-      box-shadow: none;
-      border-color: var(--border);
-      background: rgba(15, 23, 42, 0.25);
-    }
+    .project.pending .project-title,
+    .project.pending .project-desc { color: var(--faint); }
 
     /* Footer */
     footer {
-      border-top: 1px solid var(--border);
-      padding: 32px 0;
-      background: rgba(7, 10, 18, 0.9);
+      border-top: 1px solid var(--rule);
+      padding: 28px 0 36px;
       margin-top: auto;
     }
 
@@ -456,43 +262,31 @@
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 16px;
-      font-size: 13.5px;
-      color: var(--text-muted);
+      gap: 12px 24px;
+      font-size: 14px;
+      color: var(--muted);
     }
+
+    .footer-inner strong { color: var(--ink); font-weight: 600; }
 
     .footer-links {
       display: flex;
-      align-items: center;
-      gap: 18px;
-    }
-
-    .footer-links a {
-      color: var(--text-muted);
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-
-    .footer-links a:hover {
-      color: var(--cyan);
+      flex-wrap: wrap;
+      gap: 6px 18px;
     }
 
     /* Responsive adjustments */
     @media (max-width: 640px) {
-      .header-inner {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .social-links {
-        width: 100%;
-        justify-content: flex-start;
-      }
-      .hero {
-        padding: 48px 0 32px;
-      }
-      .apps-grid {
+      .container { padding: 0 20px; }
+      .intro { padding: 56px 0 40px; }
+      .project {
         grid-template-columns: 1fr;
+        gap: 4px;
+        padding: 24px 0;
       }
+      .project-num { padding-top: 0; }
+      .project-title { font-size: 28px; }
+      .project-open { padding-top: 6px; }
       .footer-inner {
         flex-direction: column;
         align-items: flex-start;
@@ -501,213 +295,130 @@
   </style>
 </head>
 <body>
-  <div class="top-glow"></div>
 
-  <!-- Header Nav -->
+  <!-- Header -->
   <header>
     <div class="container">
       <div class="header-inner">
-        <a href="./" class="logo-group">
-          <div class="logo-badge">✦</div>
-          <div class="logo-title">
-            Jose Marquez
-            <span class="logo-tag">ai-lab</span>
-          </div>
+        <a href="./" class="wordmark">
+          <span class="wordmark-mark" aria-hidden="true"></span>
+          <span>sandbox<span class="wordmark-sub"> / web</span></span>
         </a>
 
-        <div class="social-links">
-          <a href="https://github.com/jose-marquez89/" target="_blank" rel="noopener noreferrer" class="social-btn">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-            </svg>
-            <span>GitHub</span>
-          </a>
-
-          <a href="https://www.linkedin.com/in/jose-marquez89/" target="_blank" rel="noopener noreferrer" class="social-btn">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.64 1.64 0 1 0 0-3.28 1.64 1.64 0 0 0 0 3.28m1.4 9.74V10.13H5.06v8.37h2.8z"/>
-            </svg>
-            <span>LinkedIn</span>
-          </a>
-        </div>
+        <nav class="header-links">
+          <a href="https://github.com/jose-marquez89/" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://www.linkedin.com/in/jose-marquez89/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        </nav>
       </div>
     </div>
   </header>
 
-  <!-- Hero Section -->
   <main>
-    <section class="hero">
+    <!-- Intro -->
+    <section class="intro">
       <div class="container">
-        <div class="hero-badge">
-          <span class="hero-badge-dot"></span>
-          <span>Argon Web SPA Tests</span>
-        </div>
-
-        <h1>Static Web Applications Crafted with AI</h1>
-
+        <p class="eyebrow">Side projects</p>
+        <h1>Small web apps, <em>one file</em> each.</h1>
         <p>
-          A curated collection of specialized, zero-dependency single-page web applications built to test the limits of modern generative models. Engineered using a combination of Gemini 4 Argon, Antigravity, OpenCode, and Vertex AI.
+          Study tools, explainers and the occasional toy. Every project here is a single
+          self-contained HTML page — no build step, nothing to install, just open it and poke around.
         </p>
-
-        <div class="tech-pills">
-          <span class="tech-pill">Gemini 4 Argon</span>
-          <span class="tech-pill">Antigravity</span>
-          <span class="tech-pill">Three.js</span>
-          <span class="tech-pill">Vertex AI</span>
-          <span class="tech-pill">Vanilla SPA</span>
-        </div>
       </div>
     </section>
 
-    <!-- Showcase Grid -->
-    <section class="showcase">
+    <!-- Project list -->
+    <section class="projects">
       <div class="container">
-        <div class="section-header">
-          <h2 class="section-title">
-            <span>Featured Applications</span>
-          </h2>
-          <span class="section-count">4 Live</span>
+        <div class="list-head">
+          <span>Projects</span>
+          <span>04</span>
         </div>
 
-        <div class="apps-grid">
-          <!-- Card 1: AnatoNurse -->
-          <a href="./anatonurse/" class="app-card">
-            <div class="card-top">
-              <div class="app-icon">🩺</div>
-              <span class="status-badge live">Live</span>
+        <ul class="project-list">
+          <!-- AnatoNurse -->
+          <li>
+            <a href="./anatonurse/" class="project">
+              <span class="project-num">01</span>
+              <div>
+                <h2 class="project-title"><span class="swatch" style="--swatch:#5b8bd1"></span>AnatoNurse 3D</h2>
+                <p class="project-desc">
+                  A 3D anatomy atlas for nursing assessment. Peel back seven organ systems, slice
+                  through cross-sections, check 14 assessment sites and quiz yourself NCLEX-style.
+                </p>
+                <div class="project-tags">
+                  <span>Three.js</span><span>WebGL</span><span>Anatomy</span><span>Nursing</span>
+                </div>
+              </div>
+              <span class="project-open">Open <span>→</span></span>
+            </a>
+          </li>
+
+          <!-- TokenForge -->
+          <li>
+            <a href="./tokenforge/" class="project">
+              <span class="project-num">02</span>
+              <div>
+                <h2 class="project-title"><span class="swatch" style="--swatch:#e2762b"></span>TokenForge</h2>
+                <p class="project-desc">
+                  A visual walk-through of how language models get from text to the next word:
+                  tokens, embeddings, attention and sampling, each with something to play with.
+                </p>
+                <div class="project-tags">
+                  <span>Three.js</span><span>D3.js</span><span>Chart.js</span><span>Explainer</span>
+                </div>
+              </div>
+              <span class="project-open">Open <span>→</span></span>
+            </a>
+          </li>
+
+          <!-- CardioTrace -->
+          <li>
+            <a href="./cardiotrace/" class="project">
+              <span class="project-num">03</span>
+              <div>
+                <h2 class="project-title"><span class="swatch" style="--swatch:#d13b49"></span>CardioTrace</h2>
+                <p class="project-desc">
+                  EKG and telemetry practice for nursing students — from a plain-English P-QRS-T
+                  primer to 15 rhythms, calipers on a paper strip and a 12-lead STEMI mapper.
+                </p>
+                <div class="project-tags">
+                  <span>D3.js</span><span>Canvas</span><span>EKG</span><span>NCLEX prep</span>
+                </div>
+              </div>
+              <span class="project-open">Open <span>→</span></span>
+            </a>
+          </li>
+
+          <!-- Linux 95 -->
+          <li>
+            <a href="./linux95/" class="project">
+              <span class="project-num">04</span>
+              <div>
+                <h2 class="project-title"><span class="swatch" style="--swatch:#008080"></span>Linux 95 Workstation</h2>
+                <p class="project-desc">
+                  A make-believe 1995 workstation. Flip the power switch, sit through the BIOS and
+                  LILO, then dig around an FVWM95 desktop with a shell, compilers, a raycaster and an FM synth.
+                </p>
+                <div class="project-tags">
+                  <span>WebContainers</span><span>Comlink</span><span>Retro</span><span>Emulator</span>
+                </div>
+              </div>
+              <span class="project-open">Open <span>→</span></span>
+            </a>
+          </li>
+
+          <!-- Placeholder -->
+          <li>
+            <div class="project pending">
+              <span class="project-num">05</span>
+              <div>
+                <h2 class="project-title"><span class="swatch"></span>Next up</h2>
+                <p class="project-desc">Something new is on the bench.</p>
+              </div>
+              <span class="project-open" style="color: var(--faint);">Soon</span>
             </div>
-
-            <h3 class="app-title">
-              <span>AnatoNurse 3D</span>
-            </h3>
-
-            <p class="app-desc">
-              Interactive 3D clinical anatomy atlas and nursing assessment trainer. Features 7 peelable organ systems, radial mesh explosion, cross-section clipping, 14 clinical assessment pins, and NCLEX quiz simulation.
-            </p>
-
-            <div class="card-tags">
-              <span class="tag">Three.js</span>
-              <span class="tag">WebGL</span>
-              <span class="tag">Clinical Atlas</span>
-              <span class="tag">3D Simulation</span>
-            </div>
-
-            <div class="card-footer">
-              <span>Launch Application</span>
-              <span class="card-arrow">→</span>
-            </div>
-          </a>
-
-          <!-- Card 2: TokenForge -->
-          <a href="./tokenforge/" class="app-card">
-            <div class="card-top">
-              <div class="app-icon">⚡</div>
-              <span class="status-badge live">Live</span>
-            </div>
-
-            <h3 class="app-title">
-              <span>TokenForge</span>
-            </h3>
-
-            <p class="app-desc">
-              Interactive visual guide showing how ChatGPT, Claude, and Gemini work under the hood using intuitive data analogies. Includes a live subword tokenizer, 3D embedding scatter plot with vector math, D3 self-attention arcs, and softmax sampling simulators.
-            </p>
-
-            <div class="card-tags">
-              <span class="tag">Three.js</span>
-              <span class="tag">D3.js</span>
-              <span class="tag">Chart.js</span>
-              <span class="tag">LLM Explainer</span>
-            </div>
-
-            <div class="card-footer">
-              <span>Launch Application</span>
-              <span class="card-arrow">→</span>
-            </div>
-          </a>
-
-          <!-- Card 3: CardioTrace -->
-          <a href="./cardiotrace/" class="app-card">
-            <div class="card-top">
-              <div class="app-icon">📈</div>
-              <span class="status-badge live">Live</span>
-            </div>
-
-            <h3 class="app-title">
-              <span>CardioTrace</span>
-            </h3>
-
-            <p class="app-desc">
-              Interactive EKG &amp; bedside telemetry trainer for nursing students. Features a plain-English P-QRS-T primer, live biophysical phosphor monitor, 25mm/s thermal paper strip with draggable electronic calipers, 15 rhythms (Basic → Intermediate → Advanced), 12-lead STEMI mapper, and NCLEX simulations.
-            </p>
-
-            <div class="card-tags">
-              <span class="tag">D3.js</span>
-              <span class="tag">HTML5 Canvas</span>
-              <span class="tag">Telemetry &amp; EKG</span>
-              <span class="tag">NCLEX Prep</span>
-            </div>
-
-            <div class="card-footer">
-              <span>Launch Application</span>
-              <span class="card-arrow">→</span>
-            </div>
-          </a>
-
-          <!-- Card 4: Linux 95 -->
-          <a href="./linux95/" class="app-card">
-            <div class="card-top">
-              <div class="app-icon">🐧</div>
-              <span class="status-badge live">Live</span>
-            </div>
-
-            <h3 class="app-title">
-              <span>Linux 95 Workstation</span>
-            </h3>
-
-            <p class="app-desc">
-              Tactile 1995 Trinitron CRT &amp; FVWM95 micro-operating system powered by a Comlink Web Worker POSIX kernel and StackBlitz WebContainer API bridge. Flip the physical power switch for Award BIOS POST, LILO boot, rxvt shell, C/JS/Python compilers, Tuxenstein 3D raycaster, and Sound Blaster 16 FM synth.
-            </p>
-
-            <div class="card-tags">
-              <span class="tag">WebContainer API</span>
-              <span class="tag">Comlink RPC</span>
-              <span class="tag">Linux 95 / FVWM95</span>
-              <span class="tag">OS Emulator</span>
-            </div>
-
-            <div class="card-footer">
-              <span>Launch Application</span>
-              <span class="card-arrow">→</span>
-            </div>
-          </a>
-
-          <!-- Coming Soon Slot -->
-          <div class="app-card placeholder-card">
-            <div class="card-top">
-              <div class="app-icon" style="background: rgba(148, 163, 184, 0.08); border-color: rgba(148, 163, 184, 0.15);">⏳</div>
-              <span class="status-badge soon">Coming Soon</span>
-            </div>
-
-            <h3 class="app-title" style="color: var(--text-muted);">
-              <span>Next Experiment</span>
-            </h3>
-
-            <p class="app-desc">
-              Additional specialized single-page web applications, simulations, and interactive domain tools are in development.
-            </p>
-
-            <div class="card-tags">
-              <span class="tag">Gemini Argon</span>
-              <span class="tag">Single Page</span>
-            </div>
-
-            <div class="card-footer" style="color: var(--text-muted);">
-              <span>In Queue</span>
-              <span>•</span>
-            </div>
-          </div>
-        </div>
+          </li>
+        </ul>
       </div>
     </section>
   </main>
@@ -717,15 +428,11 @@
     <div class="container">
       <div class="footer-inner">
         <div>
-          Created by <strong>Jose Marquez</strong> — Experiments with Gemini 4 Argon & Antigravity
+          Made by <strong>Jose Marquez</strong>, with help from Gemini &amp; Antigravity.
         </div>
         <div class="footer-links">
           <a href="https://github.com/jose-marquez89/" target="_blank" rel="noopener noreferrer">GitHub</a>
           <a href="https://www.linkedin.com/in/jose-marquez89/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-          <a href="./anatonurse/">AnatoNurse 3D</a>
-          <a href="./tokenforge/">TokenForge</a>
-          <a href="./cardiotrace/">CardioTrace</a>
-          <a href="./linux95/">Linux 95</a>
         </div>
       </div>
     </div>

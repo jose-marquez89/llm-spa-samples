@@ -6,6 +6,9 @@ Guidance for AI agents working in this repository.
 
 - `index.html` (repo root) — the landing page that links to every app. **Keep its current
   styling as-is**; it is the neutral "lab index" and is intentionally *not* themed per topic.
+  (Current look: warm paper / ink "notebook index" — Instrument Serif + IBM Plex Sans/Mono, one
+  burnt-orange accent, numbered project list, automatic dark mode via `prefers-color-scheme`.
+  Each row's small colour swatch nods to that app's own theme.)
 - Each subdirectory (e.g. `anatonurse/`, `tokenforge/`) is a **separate, self-contained
   single-page web app** (one `index.html` with inline CSS/JS, libraries from CDNs). There is no
   build step, package manager or test suite — open the files directly in a browser.
